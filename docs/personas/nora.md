@@ -59,12 +59,52 @@ Text when editing. Source: `App/Views/ContentView.swift`, `MessageEditorView.swi
 
 ## Nora's current take
 
-(Filled in from the first whole-app review, below.)
+Fixed after the first review (2026-11-17, a07fcf9): "Send this text?" cut off the message at half
+height and at large text; Edit from there dropped you on the list; Cancel threw a draft away
+without asking; times said "Nov 17 at 4:01 PM" for today and wrapped mid-phrase at large text; the
+editor said "Delete Text" where everything else says "Don't Send"; New Text didn't focus To; the
+empty list turned white.
+
+Still open, by how much they get in the way:
+1. **"Later" doesn't mean later.** It only closes the sheet; nothing asks again. For an app about
+   deciding at the right moment, "ask me again in an hour / tonight / tomorrow" is the missing
+   action, on the review screen and as a notification action. Waiting on Mike (call 1).
+2. **No app icon.** The banner, the first thing he sees, shows the blank placeholder grid. Waiting
+   on Mike (call 3).
+3. **One name for "don't send".** The app says "Don't Send"; the notification says "Cancel Text"
+   (Mike's word). Waiting on Mike (call 2).
+4. **Swiping a changed draft down does nothing visible.** Cancel asks before discarding, but the
+   swipe is just blocked with no prompt. Needs the presentation controller's
+   did-attempt-to-dismiss hook.
+5. **A picked contact is fragile.** Changing one digit drops the name for good, and the recipient
+   takes three rows where Messages shows one chip. Show the contact as one row (name, number
+   label, number, a clear button) with "Change".
+6. **The default time is always an hour from now.** Quick picks (In 1 Hour, This Evening, Tomorrow
+   Morning) would fit "thought of it at a bad moment" better, and late at night tomorrow 9 AM is
+   the better default.
+
+Smaller: typed numbers aren't formatted ("5551234567" next to "(555) 564-8583"); the notification
+title loses its "?" for long names (name as title, "Send this text?" as subtitle would fix it);
+Save looks the same as Cancel; long-pressing a row opens the editor instead of a Send / Edit /
+Don't Send menu; the keyboard's Done button floats over the time pill.
+
+Dropped from the review: the contact picker's 3-second delay and the "can't send texts" alert are
+simulator-only.
 
 ## Open calls waiting on Mike
 
-None yet.
+1. **Snooze.** Make "Later" a menu (In 1 Hour, This Evening, Tomorrow Morning, Pick a Time) that
+   reschedules, plus a "Remind Me Later" notification action? That would be a third action next to
+   Send and Cancel Text, which he set at exactly two. Nora's pick: yes on the review screen, and
+   ask him about the notification.
+2. **One label.** "Don't Send" everywhere (clearer next to the editor's Cancel button, which closes
+   the screen), or "Cancel Text" everywhere (his word)? Nora's pick: "Don't Send".
+3. **An icon.** Offer two or three candidates.
+4. **Confirm deletes?** The review found that "Don't Send" deletes with no confirmation or undo
+   (Reminders asks). Nora's pick: no confirmation (it would slow the decision he opens the app to
+   make), but an Undo toast on the list for a few seconds.
 
 ## Log
 
-- 2026-11-17: Brief created. First blind whole-app review run in the simulator.
+- 2026-11-17: Brief created. First blind whole-app review in the simulator (19 findings): 8
+  fixed, 6 open, 4 calls for Mike, 2 dropped as simulator-only.
