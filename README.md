@@ -25,7 +25,7 @@ You need a Mac with Xcode 16 or newer, and [XcodeGen](https://github.com/yonasko
 
 ```sh
 brew install xcodegen
-cd ios/ScheduledTexts
+cd scheduled-texts
 xcodegen
 open ScheduledTexts.xcodeproj
 ```
