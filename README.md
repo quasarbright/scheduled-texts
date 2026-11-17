@@ -47,3 +47,13 @@ Texts are saved as JSON in the app's Application Support folder. Nothing leaves 
 - An app icon (the project has none yet).
 - A privacy policy URL. The app collects nothing, so it can say exactly that.
 - Your bundle id and team in `project.yml`.
+
+## Testing the notification buttons in the Simulator
+
+Taps sent by simulator automation tools pass straight through notification banners, so the banner looks broken when it isn't. `DemoUITests` drives SpringBoard through XCUITest instead. Schedule a text, then run:
+
+```bash
+TEST_RUNNER_DEMO_ACTION=send TEST_RUNNER_DEMO_TITLE="Kate Bell" xcodebuild test -project ScheduledTexts.xcodeproj -scheme ScheduledTexts -destination 'platform=iOS Simulator,name=iPhone 18 Pro' -only-testing:DemoUITests
+```
+
+`DEMO_ACTION` is `tap` (open the app), `send` or `cancel` (press and hold, then pick the button). The test waits up to three minutes for the banner.

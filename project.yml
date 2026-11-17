@@ -29,3 +29,25 @@ targets:
         INFOPLIST_KEY_UIApplicationSceneManifest_Generation: YES
         INFOPLIST_KEY_UISupportedInterfaceOrientations_iPhone: UIInterfaceOrientationPortrait
         INFOPLIST_KEY_ITSAppUsesNonExemptEncryption: NO
+  DemoUITests:
+    type: bundle.ui-testing
+    platform: iOS
+    sources:
+      - DemoUITests
+    dependencies:
+      - target: ScheduledTexts
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.quasarbright.ScheduledTexts.DemoUITests
+        SWIFT_VERSION: "5.0"
+        GENERATE_INFOPLIST_FILE: YES
+        CODE_SIGN_STYLE: Automatic
+        TEST_TARGET_NAME: ScheduledTexts
+schemes:
+  ScheduledTexts:
+    build:
+      targets:
+        ScheduledTexts: all
+    test:
+      targets:
+        - DemoUITests
