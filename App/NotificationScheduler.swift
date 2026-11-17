@@ -9,7 +9,6 @@ enum NotificationScheduler {
     /// The buttons that appear when you press and hold a notification.
     enum Action {
         static let send = "SEND"
-        static let edit = "EDIT"
         static let cancel = "CANCEL"
     }
 
@@ -22,21 +21,15 @@ enum NotificationScheduler {
             options: [.foreground],
             icon: UNNotificationActionIcon(systemImageName: "paperplane")
         )
-        let edit = UNNotificationAction(
-            identifier: Action.edit,
-            title: "Edit",
-            options: [.foreground],
-            icon: UNNotificationActionIcon(systemImageName: "pencil")
-        )
         let cancel = UNNotificationAction(
             identifier: Action.cancel,
-            title: "Don't Send",
+            title: "Cancel Text",
             options: [.destructive],
             icon: UNNotificationActionIcon(systemImageName: "xmark")
         )
         let category = UNNotificationCategory(
             identifier: categoryID,
-            actions: [send, edit, cancel],
+            actions: [send, cancel],
             intentIdentifiers: [],
             options: []
         )

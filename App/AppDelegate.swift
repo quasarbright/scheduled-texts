@@ -41,8 +41,6 @@ final class AppDelegate: NSObject, UIApplicationDelegate, UNUserNotificationCent
             case NotificationScheduler.Action.send:
                 // Opens the app straight into the prefilled compose sheet.
                 Router.shared.open(.send(id))
-            case NotificationScheduler.Action.edit:
-                Router.shared.open(.edit(id))
             case NotificationScheduler.Action.cancel:
                 // Runs in the background without opening the app. Wait for
                 // the notification cleanup before telling iOS we're done.

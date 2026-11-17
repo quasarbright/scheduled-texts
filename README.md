@@ -5,10 +5,10 @@ An iPhone app for texts you want to send later, but only if you still want to se
 ## How it works
 
 - **Tap the notification** to open a "Send this text?" screen with Send, Edit and Don't Send.
-- **Press and hold the notification** for the same three choices without opening the app first:
-  - **Send** opens the Messages compose sheet with the recipient and text filled in. You tap the send arrow.
-  - **Edit** opens the text in the app so you can change the wording, recipient or time.
-  - **Don't Send** deletes it without opening the app.
+- **Press and hold the notification** for two quicker choices:
+  - **Send** opens the app straight into the Messages compose sheet with the recipient and text filled in. You tap the send arrow.
+  - **Cancel Text** deletes it quietly without opening the app.
+- **Pick the recipient from Contacts** or type a number or email. A picked contact shows by name in the list and the notification.
 - **Missed notifications stay** in Notification Center until you deal with them, and the app icon badge counts texts that are waiting.
 - **The app lists everything pending**: "Ready to Send" for texts whose time has come, and "Scheduled" for later ones. Swipe right to send now, swipe left to delete.
 - **iMessage and SMS** both work. The system compose sheet picks the right one, so Android contacts are fine.
