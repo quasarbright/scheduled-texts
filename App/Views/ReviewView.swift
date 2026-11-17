@@ -8,32 +8,43 @@ struct ReviewView: View {
 
     @EnvironmentObject private var store: MessageStore
     @EnvironmentObject private var router: Router
+    @Environment(\.dynamicTypeSize) private var typeSize
+
+    @State private var detent: PresentationDetent = .medium
 
     var body: some View {
         NavigationStack {
-            VStack(alignment: .leading, spacing: 20) {
-                VStack(alignment: .leading, spacing: 2) {
-                    Text("To \(message.displayRecipient)")
-                        .font(.headline)
-                    if message.recipientName != nil {
-                        Text(message.recipientAddress)
-                            .font(.subheadline)
+            VStack(spacing: 16) {
+                // The part you're deciding on scrolls, so a long message or
+                // large text is never cut off. The buttons stay put.
+                ScrollView {
+                    VStack(alignment: .leading, spacing: 16) {
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text("To \(message.displayRecipient)")
+                                .font(.headline)
+                            if message.recipientName != nil {
+                                Text(message.recipientAddress)
+                                    .font(.subheadline)
+                                    .foregroundStyle(.secondary)
+                            }
+                        }
+
+                        Text(message.body)
+                            .fixedSize(horizontal: false, vertical: true)
+                            .padding(.horizontal, 14)
+                            .padding(.vertical, 10)
+                            .foregroundStyle(.white)
+                            .background(Color.blue, in: RoundedRectangle(cornerRadius: 18, style: .continuous))
+                            .containerRelativeFrame(.horizontal, alignment: .trailing) { width, _ in width * 0.8 }
+                            .frame(maxWidth: .infinity, alignment: .trailing)
+
+                        Text("Scheduled for \(SendTimeFormat.string(for: message.sendAt))")
+                            .font(.footnote)
                             .foregroundStyle(.secondary)
                     }
+                    .frame(maxWidth: .infinity, alignment: .leading)
                 }
-
-                Text(message.body)
-                    .padding(.horizontal, 14)
-                    .padding(.vertical, 10)
-                    .foregroundStyle(.white)
-                    .background(Color.blue, in: RoundedRectangle(cornerRadius: 18, style: .continuous))
-                    .frame(maxWidth: .infinity, alignment: .trailing)
-
-                Text("Scheduled for \(message.sendAt.formatted(date: .abbreviated, time: .shortened))")
-                    .font(.footnote)
-                    .foregroundStyle(.secondary)
-
-                Spacer(minLength: 0)
+                .scrollBounceBehavior(.basedOnSize)
 
                 VStack(spacing: 12) {
                     Button {
@@ -45,7 +56,7 @@ struct ReviewView: View {
                     .buttonStyle(.borderedProminent)
 
                     Button {
-                        router.open(.edit(message.id))
+                        router.editFromReview(message.id)
                     } label: {
                         Label("Edit", systemImage: "pencil")
                             .frame(maxWidth: .infinity)
@@ -72,6 +83,13 @@ struct ReviewView: View {
                 }
             }
         }
-        .presentationDetents([.medium, .large])
+        .presentationDetents([.medium, .large], selection: $detent)
+        .onAppear {
+            // Open tall when the message or the text size wouldn't fit in half
+            // the screen.
+            if message.body.count > 90 || typeSize >= .xxLarge {
+                detent = .large
+            }
+        }
     }
 }

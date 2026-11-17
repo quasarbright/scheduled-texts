@@ -15,8 +15,11 @@ struct MessageEditorView: View {
     /// The address that came with `recipientName`. Typing a different one
     /// drops the name, so the list never shows the wrong person.
     @State private var pickedAddress: String?
-    /// True while the keyboard is up for the address or message field.
-    @FocusState private var typing: Bool
+    /// Which field has the keyboard, if any.
+    @FocusState private var focus: Field?
+    @State private var confirmingDiscard = false
+
+    private enum Field { case to, message }
 
     private let id: UUID
 
@@ -60,7 +63,7 @@ struct MessageEditorView: View {
                         .textContentType(.telephoneNumber)
                         .textInputAutocapitalization(.never)
                         .autocorrectionDisabled()
-                        .focused($typing)
+                        .focused($focus, equals: .to)
                     Button {
                         Task {
                             if let pick = await ContactPicker.shared.pick() {
@@ -75,9 +78,9 @@ struct MessageEditorView: View {
                 }
 
                 Section("Message") {
-                    TextField("Message", text: $text, axis: .vertical)
+                    TextField("What do you want to say?", text: $text, axis: .vertical)
                         .lineLimit(3...12)
-                        .focused($typing)
+                        .focused($focus, equals: .message)
                 }
 
                 Section {
@@ -85,21 +88,30 @@ struct MessageEditorView: View {
                 } header: {
                     Text("When")
                 } footer: {
-                    if sendAt <= Date() {
-                        Text("That time has passed, so this text will be ready to send right away.")
-                    } else {
+                    if sendAt > Date() {
                         Text("You'll get a notification asking whether to send it.")
+                    } else if let existing, existing.isDue(at: Date()) {
+                        Text("This text is ready to send now.")
+                    } else {
+                        Text("That time has passed, so this text will be ready to send right away.")
                     }
                 }
 
                 if let existing {
                     Section {
-                        Button("Delete Text", role: .destructive) {
+                        Button(role: .destructive) {
                             store.delete(id: existing.id)
                             router.close()
+                        } label: {
+                            // A form tints the icon blue unless told otherwise.
+                            Label("Don't Send", systemImage: "xmark")
+                                .foregroundStyle(.red)
                         }
                     }
                 }
+            }
+            .onAppear {
+                if existing == nil { focus = .to }
             }
             .onChange(of: recipientAddress) { _, newValue in
                 if newValue != pickedAddress {
@@ -114,22 +126,42 @@ struct MessageEditorView: View {
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
-                    Button("Cancel") { router.close() }
+                    Button("Cancel") {
+                        if hasChanges {
+                            confirmingDiscard = true
+                        } else {
+                            closeEditor()
+                        }
+                    }
+                    .confirmationDialog(
+                        existing == nil ? "Discard this text?" : "Discard your changes?",
+                        isPresented: $confirmingDiscard,
+                        titleVisibility: .visible
+                    ) {
+                        Button("Discard", role: .destructive) { closeEditor() }
+                        Button("Keep Editing", role: .cancel) {}
+                    }
                 }
                 ToolbarItem(placement: .confirmationAction) {
                     Button("Save") {
                         store.save(draft)
-                        router.close()
+                        router.closeEditor(stillDue: draft.isDue(at: Date()))
                     }
                     .disabled(!draft.isValid)
                 }
                 ToolbarItemGroup(placement: .keyboard) {
                     Spacer()
-                    Button("Done") { typing = false }
+                    Button("Done") { focus = nil }
                 }
             }
         }
         .interactiveDismissDisabled(hasChanges)
+    }
+
+    /// Leaves without saving: back to "Send this text?" if that's where the
+    /// editor was opened from, otherwise to the list.
+    private func closeEditor() {
+        router.closeEditor(stillDue: existing?.isDue(at: Date()) ?? false)
     }
 
     private var hasChanges: Bool {

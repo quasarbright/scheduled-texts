@@ -22,6 +22,25 @@ final class ScheduledMessageTests: XCTestCase {
         XCTAssertFalse(message.isDue(at: now.addingTimeInterval(-1)))
     }
 
+    func testSendTimeFormatUsesDayNames() {
+        var calendar = Calendar(identifier: .gregorian)
+        calendar.timeZone = TimeZone(identifier: "America/New_York")!
+        let locale = Locale(identifier: "en_US")
+        func date(_ y: Int, _ m: Int, _ d: Int, _ h: Int, _ min: Int) -> Date {
+            calendar.date(from: DateComponents(year: y, month: m, day: d, hour: h, minute: min))!
+        }
+        let now = date(2026, 11, 16, 23, 30)
+        func fmt(_ d: Date) -> String {
+            SendTimeFormat.string(for: d, now: now, calendar: calendar, locale: locale)
+                .replacingOccurrences(of: "\u{202F}", with: " ")
+        }
+        XCTAssertEqual(fmt(date(2026, 11, 16, 23, 59)), "Today, 11:59 PM")
+        XCTAssertEqual(fmt(date(2026, 11, 17, 9, 0)), "Tomorrow, 9:00 AM")
+        XCTAssertEqual(fmt(date(2026, 11, 15, 21, 9)), "Yesterday, 9:09 PM")
+        XCTAssertEqual(fmt(date(2026, 11, 23, 10, 15)), "Nov 23, 10:15 AM")
+        XCTAssertEqual(fmt(date(2027, 1, 2, 8, 0)), "Jan 2, 2027, 8:00 AM")
+    }
+
     func testIsValid() {
         let date = Date()
         XCTAssertTrue(ScheduledMessage(recipientAddress: "1", body: "hi", sendAt: date).isValid)

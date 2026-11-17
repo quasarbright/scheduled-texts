@@ -84,6 +84,9 @@ struct ContentView: View {
                 }
             }
         }
+        // An empty list would otherwise drop to a plain white background.
+        .scrollContentBackground(.hidden)
+        .background(Color(.systemGroupedBackground))
         .overlay {
             if store.queue.isEmpty && notificationsAllowed {
                 ContentUnavailableView {
@@ -109,7 +112,7 @@ struct ContentView: View {
             Button(role: .destructive) {
                 store.delete(id: message.id)
             } label: {
-                Label("Don't Send", systemImage: "trash")
+                Label("Don't Send", systemImage: "xmark")
             }
         }
         .swipeActions(edge: .leading) {
@@ -167,14 +170,18 @@ struct MessageRow: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 4) {
-            HStack(alignment: .firstTextBaseline) {
-                Text(message.displayRecipient)
-                    .font(.headline)
-                    .lineLimit(1)
-                Spacer()
-                Text(message.sendAt, format: .dateTime.month(.abbreviated).day().hour().minute())
-                    .font(.subheadline)
-                    .foregroundStyle(message.isDue(at: now) ? Color.orange : Color.secondary)
+            // Name and time on one line when they fit; at large text sizes
+            // the time gets its own line instead of wrapping mid-phrase.
+            ViewThatFits(in: .horizontal) {
+                HStack(alignment: .firstTextBaseline) {
+                    name
+                    Spacer()
+                    time.fixedSize()
+                }
+                VStack(alignment: .leading, spacing: 2) {
+                    name
+                    time
+                }
             }
             Text(message.body)
                 .font(.subheadline)
@@ -184,6 +191,18 @@ struct MessageRow: View {
         .padding(.vertical, 2)
         .frame(maxWidth: .infinity, alignment: .leading)
         .contentShape(Rectangle())
+    }
+
+    private var name: some View {
+        Text(message.displayRecipient)
+            .font(.headline)
+            .lineLimit(1)
+    }
+
+    private var time: some View {
+        Text(SendTimeFormat.string(for: message.sendAt, now: now))
+            .font(.subheadline)
+            .foregroundStyle(message.isDue(at: now) ? Color.orange : Color.secondary)
     }
 }
 
