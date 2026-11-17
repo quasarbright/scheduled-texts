@@ -15,6 +15,8 @@ struct MessageEditorView: View {
     /// The address that came with `recipientName`. Typing a different one
     /// drops the name, so the list never shows the wrong person.
     @State private var pickedAddress: String?
+    /// True while the keyboard is up for the address or message field.
+    @FocusState private var typing: Bool
 
     private let id: UUID
 
@@ -58,6 +60,7 @@ struct MessageEditorView: View {
                         .textContentType(.telephoneNumber)
                         .textInputAutocapitalization(.never)
                         .autocorrectionDisabled()
+                        .focused($typing)
                     Button {
                         Task {
                             if let pick = await ContactPicker.shared.pick() {
@@ -74,6 +77,7 @@ struct MessageEditorView: View {
                 Section("Message") {
                     TextField("Message", text: $text, axis: .vertical)
                         .lineLimit(3...12)
+                        .focused($typing)
                 }
 
                 Section {
@@ -103,6 +107,9 @@ struct MessageEditorView: View {
                     pickedAddress = nil
                 }
             }
+            // Return adds a new line in the message, so the keyboard needs
+            // another way out, or it covers the time picker.
+            .scrollDismissesKeyboard(.immediately)
             .navigationTitle(existing == nil ? "New Text" : "Edit Text")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
@@ -115,6 +122,10 @@ struct MessageEditorView: View {
                         router.close()
                     }
                     .disabled(!draft.isValid)
+                }
+                ToolbarItemGroup(placement: .keyboard) {
+                    Spacer()
+                    Button("Done") { typing = false }
                 }
             }
         }
