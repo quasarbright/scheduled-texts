@@ -38,11 +38,17 @@ into "Nora's current take" below. Screenshots are on the iPhone 18 Pro simulator
 - **It always asks.** iOS can't send a text silently or read your messages, so there's no "send
   only if we haven't talked" mode. Every text ends at the Messages compose sheet with one tap on
   send. (Issue #268 wanted the auto mode; it isn't possible on iPhone.)
-- **Pressing and holding the notification gives exactly two choices** (Mike, 2026-11-17): **Send**
-  opens the app straight into the prefilled compose sheet, and **Cancel Text** deletes it silently
-  without opening anything. No Edit there.
-- **Tapping the notification opens the app** on a "Send this text?" screen (Send, Edit, Don't Send,
-  Later).
+- **Pressing and holding the notification** (Mike, 2026-11-17): **Send** opens the app straight into
+  the prefilled compose sheet; **Remind Me in 1 Hour / Tonight / Tomorrow Morning** reschedule in the
+  background; **Don't Send** deletes it silently without opening anything. No Edit there.
+- **Tapping the notification opens the app** on a "Send this text?" screen (Send, Remind Me Later,
+  Edit, Don't Send, Close).
+- **Remind Me Later has the same three choices everywhere** (In 1 Hour, Tonight at 8 PM, Tomorrow
+  Morning at 9 AM). Tonight only shows before 7 PM.
+- **"Don't Send" is the one name** for not sending, in the app and on the notification.
+- **No confirmation on deletes; Undo instead,** for 8 seconds, pinned at the bottom of the screen
+  so it's visible however full or scrolled the list is (Mike: "always visible regardless of
+  scrolling or if there's a lot of shit on screen").
 - **Pick people from Contacts,** and show them by name in the list and the notification.
 - **A missed notification stays** in Notification Center until it's handled, and the badge counts
   texts that are waiting.
@@ -65,23 +71,20 @@ without asking; times said "Nov 17 at 4:01 PM" for today and wrapped mid-phrase 
 editor said "Delete Text" where everything else says "Don't Send"; New Text didn't focus To; the
 empty list turned white.
 
+Built (2026-11-17, b05b148): Remind Me Later in the app and on the notification, Undo after
+deletes and reminders, "Don't Send" on the notification.
+
 Still open, by how much they get in the way:
-1. **"Later" doesn't mean later.** It only closes the sheet; nothing asks again. For an app about
-   deciding at the right moment, "ask me again in an hour / tonight / tomorrow" is the missing
-   action, on the review screen and as a notification action. Waiting on Mike (call 1).
-2. **No app icon.** The banner, the first thing he sees, shows the blank placeholder grid. Waiting
-   on Mike (call 3).
-3. **One name for "don't send".** The app says "Don't Send"; the notification says "Cancel Text"
-   (Mike's word). Waiting on Mike (call 2).
-4. **Swiping a changed draft down does nothing visible.** Cancel asks before discarding, but the
+1. **No app icon yet.** Three candidates are with Mike (bubble with a clock on blue, bubble with a
+   question mark on orange, paper plane with a clock on indigo).
+2. **Swiping a changed draft down does nothing visible.** Cancel asks before discarding, but the
    swipe is just blocked with no prompt. Needs the presentation controller's
    did-attempt-to-dismiss hook.
-5. **A picked contact is fragile.** Changing one digit drops the name for good, and the recipient
+3. **A picked contact is fragile.** Changing one digit drops the name for good, and the recipient
    takes three rows where Messages shows one chip. Show the contact as one row (name, number
    label, number, a clear button) with "Change".
-6. **The default time is always an hour from now.** Quick picks (In 1 Hour, This Evening, Tomorrow
-   Morning) would fit "thought of it at a bad moment" better, and late at night tomorrow 9 AM is
-   the better default.
+4. **The default time is always an hour from now.** The Remind Me Later choices (In 1 Hour,
+   Tonight, Tomorrow Morning) would make good quick picks under the date picker too.
 
 Smaller: typed numbers aren't formatted ("5551234567" next to "(555) 564-8583"); the notification
 title loses its "?" for long names (name as title, "Send this text?" as subtitle would fix it);
@@ -93,18 +96,14 @@ simulator-only.
 
 ## Open calls waiting on Mike
 
-1. **Snooze.** Make "Later" a menu (In 1 Hour, This Evening, Tomorrow Morning, Pick a Time) that
-   reschedules, plus a "Remind Me Later" notification action? That would be a third action next to
-   Send and Cancel Text, which he set at exactly two. Nora's pick: yes on the review screen, and
-   ask him about the notification.
-2. **One label.** "Don't Send" everywhere (clearer next to the editor's Cancel button, which closes
-   the screen), or "Cancel Text" everywhere (his word)? Nora's pick: "Don't Send".
-3. **An icon.** Offer two or three candidates.
-4. **Confirm deletes?** The review found that "Don't Send" deletes with no confirmation or undo
-   (Reminders asks). Nora's pick: no confirmation (it would slow the decision he opens the app to
-   make), but an Undo toast on the list for a few seconds.
+1. **Which icon** (or another direction).
+
+Answered 2026-11-17: snooze yes, in the app and on the notification, called Remind Me Later in
+both; "Don't Send" everywhere; Undo instead of confirming deletes.
 
 ## Log
 
 - 2026-11-17: Brief created. First blind whole-app review in the simulator (19 findings): 8
   fixed, 6 open, 4 calls for Mike, 2 dropped as simulator-only.
+- 2026-11-17: Mike answered the four calls. Built Remind Me Later, Undo and the one label; icon
+  candidates sent.
