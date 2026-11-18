@@ -75,15 +75,13 @@ Built (2026-11-17, b05b148): Remind Me Later in the app and on the notification,
 deletes and reminders, "Don't Send" on the notification.
 
 Still open, by how much they get in the way:
-1. **No app icon yet.** Three candidates are with Mike (bubble with a clock on blue, bubble with a
-   question mark on orange, paper plane with a clock on indigo).
-2. **Swiping a changed draft down does nothing visible.** Cancel asks before discarding, but the
+1. **Swiping a changed draft down does nothing visible.** Cancel asks before discarding, but the
    swipe is just blocked with no prompt. Needs the presentation controller's
    did-attempt-to-dismiss hook.
-3. **A picked contact is fragile.** Changing one digit drops the name for good, and the recipient
+2. **A picked contact is fragile.** Changing one digit drops the name for good, and the recipient
    takes three rows where Messages shows one chip. Show the contact as one row (name, number
    label, number, a clear button) with "Change".
-4. **The default time is always an hour from now.** The Remind Me Later choices (In 1 Hour,
+3. **The default time is always an hour from now.** The Remind Me Later choices (In 1 Hour,
    Tonight, Tomorrow Morning) would make good quick picks under the date picker too.
 
 Smaller: typed numbers aren't formatted ("5551234567" next to "(555) 564-8583"); the notification
@@ -96,9 +94,10 @@ simulator-only.
 
 ## Open calls waiting on Mike
 
-1. **Which icon** (or another direction).
+None.
 
-Answered 2026-11-17: snooze yes, in the app and on the notification, called Remind Me Later in
+Answered 2026-11-17: the icon is a clock in a white message bubble on blue, filling most of
+the square (004604a, source design/app-icon.svg); snooze yes, in the app and on the notification, called Remind Me Later in
 both; "Don't Send" everywhere; Undo instead of confirming deletes.
 
 ## Log
@@ -107,3 +106,4 @@ both; "Don't Send" everywhere; Undo instead of confirming deletes.
   fixed, 6 open, 4 calls for Mike, 2 dropped as simulator-only.
 - 2026-11-17: Mike answered the four calls. Built Remind Me Later, Undo and the one label; icon
   candidates sent.
+- 2026-11-17: Icon picked (bubble with a clock, bigger, polished) and added to the app.
