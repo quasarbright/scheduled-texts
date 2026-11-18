@@ -41,6 +41,24 @@ final class ScheduledMessageTests: XCTestCase {
         XCTAssertEqual(fmt(date(2027, 1, 2, 8, 0)), "Jan 2, 2027, 8:00 AM")
     }
 
+    func testRemindLaterTimes() {
+        var calendar = Calendar(identifier: .gregorian)
+        calendar.timeZone = TimeZone(identifier: "America/New_York")!
+        func date(_ d: Int, _ h: Int, _ m: Int) -> Date {
+            calendar.date(from: DateComponents(year: 2026, month: 11, day: d, hour: h, minute: m))!
+        }
+        let afternoon = date(17, 14, 20)
+        XCTAssertEqual(RemindLater.inAnHour.date(from: afternoon.addingTimeInterval(30), calendar: calendar), date(17, 15, 20))
+        XCTAssertEqual(RemindLater.tonight.date(from: afternoon, calendar: calendar), date(17, 20, 0))
+        XCTAssertEqual(RemindLater.tomorrowMorning.date(from: afternoon, calendar: calendar), date(18, 9, 0))
+        XCTAssertEqual(RemindLater.tomorrowMorning.date(from: date(18, 2, 0), calendar: calendar), date(18, 9, 0))
+
+        XCTAssertEqual(RemindLater.options(at: afternoon, calendar: calendar), [.inAnHour, .tonight, .tomorrowMorning])
+        XCTAssertEqual(RemindLater.options(at: date(17, 18, 59), calendar: calendar), [.inAnHour, .tonight, .tomorrowMorning])
+        XCTAssertEqual(RemindLater.options(at: date(17, 19, 0), calendar: calendar), [.inAnHour, .tomorrowMorning])
+        XCTAssertEqual(RemindLater.options(at: date(17, 23, 0), calendar: calendar), [.inAnHour, .tomorrowMorning])
+    }
+
     func testIsValid() {
         let date = Date()
         XCTAssertTrue(ScheduledMessage(recipientAddress: "1", body: "hi", sendAt: date).isValid)
@@ -125,8 +143,10 @@ final class NotificationPlannerTests: XCTestCase {
         let plan = NotificationPlanner.plan(for: MessageQueue([later, due, soon]), now: now)
 
         XCTAssertEqual(plan, [
-            PlannedNotification(id: soon.id.uuidString, fireDate: soon.sendAt, title: "Send text to Alex?", body: "soon", badge: 2),
-            PlannedNotification(id: later.id.uuidString, fireDate: later.sendAt, title: "Send text to +15550000?", body: "later", badge: 3),
+            PlannedNotification(id: soon.id.uuidString, fireDate: soon.sendAt, title: "Send text to Alex?", body: "soon", badge: 2,
+                                offersTonight: RemindLater.offersTonight(at: soon.sendAt)),
+            PlannedNotification(id: later.id.uuidString, fireDate: later.sendAt, title: "Send text to +15550000?", body: "later", badge: 3,
+                                offersTonight: RemindLater.offersTonight(at: later.sendAt)),
         ])
     }
 

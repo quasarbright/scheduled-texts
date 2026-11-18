@@ -5,7 +5,7 @@ import XCTest
 /// scheduled already; this waits for its banner.
 ///
 /// Environment (pass with a TEST_RUNNER_ prefix to xcodebuild):
-///   DEMO_ACTION: tap (default), send or cancel
+///   DEMO_ACTION: tap (default), send, hour, tonight, morning or cancel
 ///   DEMO_TITLE:  text the banner contains, default "Send text to"
 final class NotificationDemoTests: XCTestCase {
     func testNotification() throws {
@@ -26,13 +26,20 @@ final class NotificationDemoTests: XCTestCase {
             banner.tap()
         default:
             banner.press(forDuration: 1.2)
-            let name = action == "send" ? "Send" : "Cancel Text"
+            let names = [
+                "send": "Send",
+                "cancel": "Don't Send",
+                "hour": "Remind Me in 1 Hour",
+                "tonight": "Remind Me Tonight",
+                "morning": "Remind Me Tomorrow Morning",
+            ]
+            let name = names[action] ?? action
             let button = springboard.buttons[name]
             XCTAssertTrue(button.waitForExistence(timeout: 5), "No \(name) button")
-            sleep(2)
+            sleep(3)
             button.tap()
-            if action == "cancel" {
-                // Nothing opens. Show the list afterwards so the text is visibly gone.
+            if action != "send" {
+                // Nothing opens. Show the list afterwards so the change shows.
                 sleep(3)
                 springboard.icons["Scheduled Texts"].tap()
             }

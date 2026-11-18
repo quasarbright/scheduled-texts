@@ -10,6 +10,8 @@ public struct PlannedNotification: Equatable {
     public let body: String
     /// The badge to show when this notification arrives.
     public let badge: Int
+    /// Whether "Remind Me Tonight" makes sense when this notification arrives.
+    public let offersTonight: Bool
 }
 
 /// Decides which notifications should exist for a queue. Kept free of
@@ -32,7 +34,8 @@ public enum NotificationPlanner {
                 fireDate: message.sendAt,
                 title: title(for: message),
                 body: message.body,
-                badge: index + 1
+                badge: index + 1,
+                offersTonight: RemindLater.offersTonight(at: message.sendAt)
             ))
             if planned.count == maxPending { break }
         }

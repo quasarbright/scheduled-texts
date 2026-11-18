@@ -29,6 +29,24 @@ struct ContentView: View {
                 }
             }
         }
+        // Pinned to the screen, outside the scrolling list, so it shows
+        // however long the list is or wherever it's scrolled.
+        .overlay(alignment: .bottom) {
+            if let change = store.lastChange {
+                UndoToast(summary: change.summary) {
+                    withAnimation { store.undo() }
+                }
+                .id(change.id)
+                .transition(.move(edge: .bottom).combined(with: .opacity))
+                .task(id: change.id) {
+                    try? await Task.sleep(for: .seconds(8))
+                    if store.lastChange?.id == change.id {
+                        withAnimation { store.dismissUndo() }
+                    }
+                }
+            }
+        }
+        .animation(.snappy, value: store.lastChange)
         .sheet(item: $router.sheet) { route in
             sheet(for: route)
         }
@@ -203,6 +221,29 @@ struct MessageRow: View {
         Text(SendTimeFormat.string(for: message.sendAt, now: now))
             .font(.subheadline)
             .foregroundStyle(message.isDue(at: now) ? Color.orange : Color.secondary)
+    }
+}
+
+/// "Won't send to Kate Bell · Undo", for a few seconds after a change.
+private struct UndoToast: View {
+    let summary: String
+    let undo: () -> Void
+
+    var body: some View {
+        HStack(spacing: 12) {
+            Text(summary)
+                .font(.subheadline)
+                .lineLimit(2)
+                .frame(maxWidth: .infinity, alignment: .leading)
+            Button("Undo", action: undo)
+                .font(.subheadline.weight(.semibold))
+        }
+        .padding(.horizontal, 18)
+        .padding(.vertical, 14)
+        .background(.regularMaterial, in: Capsule())
+        .shadow(color: .black.opacity(0.15), radius: 12, y: 4)
+        .padding(.horizontal, 16)
+        .padding(.bottom, 8)
     }
 }
 

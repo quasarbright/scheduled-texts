@@ -43,15 +43,55 @@ final class MessageStore: ObservableObject {
         resync()
     }
 
-    func delete(id: UUID) {
-        guard queue.remove(id: id) != nil else { return }
+    /// The last change the person can undo, and what it said it did.
+    struct UndoableChange: Equatable {
+        let id = UUID()
+        let summary: String
+        /// The text as it was before. Saving it again undoes the change.
+        let previous: ScheduledMessage
+    }
+
+    @Published private(set) var lastChange: UndoableChange?
+
+    /// Removes a text. `undoable` is false when nobody's looking (a
+    /// notification action), so no Undo shows up later.
+    func delete(id: UUID, undoable: Bool = true) {
+        guard let removed = queue.remove(id: id) else { return }
+        lastChange = undoable
+            ? UndoableChange(summary: "Won't send to \(removed.displayRecipient)", previous: removed)
+            : nil
         persist()
         resync()
     }
 
+    /// Moves a text to a Remind Me Later time.
+    func remindLater(id: UUID, _ option: RemindLater, undoable: Bool = true, now: Date = Date()) {
+        guard var message = queue.message(id: id) else { return }
+        let previous = message
+        message.sendAt = option.date(from: now)
+        save(message)
+        lastChange = undoable
+            ? UndoableChange(
+                summary: "Asking again \(SendTimeFormat.string(for: message.sendAt, now: now))",
+                previous: previous
+            )
+            : nil
+    }
+
+    /// Puts back the text as it was before the last change.
+    func undo() {
+        guard let change = lastChange else { return }
+        lastChange = nil
+        save(change.previous)
+    }
+
+    func dismissUndo() {
+        lastChange = nil
+    }
+
     /// The person tapped Send in the compose sheet, so the text is done.
     func markSent(id: UUID) {
-        delete(id: id)
+        delete(id: id, undoable: false)
     }
 
     /// Brings notifications and the badge up to date. Syncs run one at a

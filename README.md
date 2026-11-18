@@ -4,10 +4,12 @@ An iPhone app for texts you want to send later, but only if you still want to se
 
 ## How it works
 
-- **Tap the notification** to open a "Send this text?" screen with Send, Edit and Don't Send.
-- **Press and hold the notification** for two quicker choices:
+- **Tap the notification** to open a "Send this text?" screen with Send, Remind Me Later, Edit and Don't Send.
+- **Press and hold the notification** for quicker choices:
   - **Send** opens the app straight into the Messages compose sheet with the recipient and text filled in. You tap the send arrow.
-  - **Cancel Text** deletes it quietly without opening the app.
+  - **Remind Me in 1 Hour / Tonight / Tomorrow Morning** moves the text to that time without opening the app. Tonight is 8 PM and only shows before 7 PM; Tomorrow Morning is 9 AM.
+  - **Don't Send** deletes it quietly without opening the app.
+- **Undo** shows at the bottom of the app for 8 seconds after you delete a text or pick Remind Me Later.
 - **Pick the recipient from Contacts** or type a number or email. A picked contact shows by name in the list and the notification.
 - **Missed notifications stay** in Notification Center until you deal with them, and the app icon badge counts texts that are waiting.
 - **The app lists everything pending**: "Ready to Send" for texts whose time has come, and "Scheduled" for later ones. Swipe right to send now, swipe left to delete.
@@ -56,4 +58,4 @@ Taps sent by simulator automation tools pass straight through notification banne
 TEST_RUNNER_DEMO_ACTION=send TEST_RUNNER_DEMO_TITLE="Kate Bell" xcodebuild test -project ScheduledTexts.xcodeproj -scheme ScheduledTexts -destination 'platform=iOS Simulator,name=iPhone 18 Pro' -only-testing:DemoUITests
 ```
 
-`DEMO_ACTION` is `tap` (open the app), `send` or `cancel` (press and hold, then pick the button). The test waits up to three minutes for the banner.
+`DEMO_ACTION` is `tap` (open the app), or `send`, `hour`, `tonight`, `morning` or `cancel` (press and hold, then pick that button). The test waits up to three minutes for the banner.

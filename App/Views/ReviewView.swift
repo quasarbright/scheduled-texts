@@ -8,9 +8,6 @@ struct ReviewView: View {
 
     @EnvironmentObject private var store: MessageStore
     @EnvironmentObject private var router: Router
-    @Environment(\.dynamicTypeSize) private var typeSize
-
-    @State private var detent: PresentationDetent = .medium
 
     var body: some View {
         NavigationStack {
@@ -55,6 +52,22 @@ struct ReviewView: View {
                     }
                     .buttonStyle(.borderedProminent)
 
+                    Menu {
+                        ForEach(RemindLater.options(at: Date())) { option in
+                            Button(option.title) {
+                                store.remindLater(id: message.id, option)
+                                router.close()
+                            }
+                        }
+                    } label: {
+                        Label("Remind Me Later", systemImage: "clock")
+                            .frame(maxWidth: .infinity)
+                    }
+                    .buttonStyle(.bordered)
+                    // Soonest first, top to bottom, even though the menu
+                    // opens upward from a button low on the screen.
+                    .menuOrder(.fixed)
+
                     Button {
                         router.editFromReview(message.id)
                     } label: {
@@ -79,17 +92,14 @@ struct ReviewView: View {
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
-                    Button("Later") { router.close() }
+                    // Leaves the text in Ready to Send. Remind Me Later is the
+                    // way to be asked again.
+                    Button("Close") { router.close() }
                 }
             }
         }
-        .presentationDetents([.medium, .large], selection: $detent)
-        .onAppear {
-            // Open tall when the message or the text size wouldn't fit in half
-            // the screen.
-            if message.body.count > 90 || typeSize >= .xxLarge {
-                detent = .large
-            }
-        }
+        // Full height: with four buttons, half the screen leaves too little
+        // room for the message you're deciding on.
+        .presentationDetents([.large])
     }
 }

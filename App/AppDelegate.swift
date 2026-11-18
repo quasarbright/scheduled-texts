@@ -44,7 +44,11 @@ final class AppDelegate: NSObject, UIApplicationDelegate, UNUserNotificationCent
             case NotificationScheduler.Action.cancel:
                 // Runs in the background without opening the app. Wait for
                 // the notification cleanup before telling iOS we're done.
-                MessageStore.shared.delete(id: id)
+                MessageStore.shared.delete(id: id, undoable: false)
+                await MessageStore.shared.waitForSync()
+            case let other where NotificationScheduler.Action.remindOption(other) != nil:
+                // Also in the background: move the text to the new time.
+                MessageStore.shared.remindLater(id: id, NotificationScheduler.Action.remindOption(other)!, undoable: false)
                 await MessageStore.shared.waitForSync()
             case UNNotificationDefaultActionIdentifier:
                 // A plain tap opens the app on a "Send this text?" screen.
