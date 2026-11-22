@@ -30,6 +30,8 @@ targets:
         INFOPLIST_KEY_UISupportedInterfaceOrientations_iPhone: UIInterfaceOrientationPortrait
         INFOPLIST_KEY_ITSAppUsesNonExemptEncryption: NO
         ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
+        # Mike's free Personal Team: apps installed with it expire after 7 days.
+        DEVELOPMENT_TEAM: 2PMZQ684CK
   DemoUITests:
     type: bundle.ui-testing
     platform: iOS
