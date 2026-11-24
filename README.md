@@ -11,6 +11,7 @@ An iPhone app for texts you want to send later, but only if you still want to se
   - **Don't Send** deletes it without opening the app.
 - **Missed notifications stay** in Notification Center until you deal with them, and the app icon badge counts texts that are waiting.
 - **The app lists everything pending**: "Ready to Send" for texts whose time has come, and "Scheduled" for later ones. Swipe right to send now, swipe left to delete.
+- **Pick who it's for like in Messages.** Type a name in the "To:" field and tap a suggestion, or type a phone number or email. Picking a person uses their iPhone or mobile number, and the number under their name is a menu for switching to another one. Without Contacts access, a "Choose from Contacts" button opens the system picker instead.
 - **iMessage and SMS** both work. The system compose sheet picks the right one, so Android contacts are fine.
 
 ## What iOS doesn't allow
@@ -37,7 +38,7 @@ The `.xcodeproj` is generated, so it isn't checked in. Run `xcodegen` again afte
 ## Code layout
 
 - `ScheduledTextsCore/` is a Swift package with the logic that doesn't need iOS: the message model, the queue, which notifications to schedule, and saving to disk. Its tests run anywhere with `swift test`.
-- `App/` is the iPhone app: SwiftUI screens, notification handling, the Messages compose sheet and the contact picker.
+- `App/` is the iPhone app: SwiftUI screens, notification handling, the Messages compose sheet, and the "To:" field with contact suggestions (the matching and default-number logic lives in `ScheduledTextsCore/ContactSearch.swift`).
 - `project.yml` describes the Xcode project for XcodeGen.
 
 Texts are saved as JSON in the app's Application Support folder. Nothing leaves the phone.

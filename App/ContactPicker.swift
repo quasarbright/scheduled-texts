@@ -1,22 +1,19 @@
 import ContactsUI
+import ScheduledTextsCore
 import UIKit
 
-/// Lets the person pick a phone number or email from Contacts.
+/// The system contact picker. Used only when the app doesn't have Contacts
+/// access, since the picker runs outside the app and needs no permission.
 ///
-/// The system contact picker runs outside the app, so it needs no Contacts
-/// permission and the app never sees the rest of the address book.
+/// Tapping a person picks them; the "To" field then uses their default
+/// number, the same as picking them from the suggestions.
 @MainActor
 final class ContactPicker: NSObject, CNContactPickerDelegate {
     static let shared = ContactPicker()
 
-    struct Pick {
-        var name: String?
-        var address: String
-    }
+    private var continuation: CheckedContinuation<ContactCard?, Never>?
 
-    private var continuation: CheckedContinuation<Pick?, Never>?
-
-    func pick() async -> Pick? {
+    func pick() async -> ContactCard? {
         guard continuation == nil else { return nil }
 
         let picker = CNContactPickerViewController()
@@ -25,9 +22,6 @@ final class ContactPicker: NSObject, CNContactPickerDelegate {
         picker.predicateForEnablingContact = NSPredicate(
             format: "phoneNumbers.@count > 0 OR emailAddresses.@count > 0"
         )
-        // Tapping a contact shows their numbers so the person picks one,
-        // rather than us guessing which number to use.
-        picker.predicateForSelectionOfContact = NSPredicate(value: false)
 
         return await withCheckedContinuation { continuation in
             self.continuation = continuation
@@ -39,22 +33,10 @@ final class ContactPicker: NSObject, CNContactPickerDelegate {
         }
     }
 
-    nonisolated func contactPicker(_ picker: CNContactPickerViewController, didSelect contactProperty: CNContactProperty) {
-        let contact = contactProperty.contact
-        let address: String?
-        if let phone = contactProperty.value as? CNPhoneNumber {
-            address = phone.stringValue
-        } else {
-            address = contactProperty.value as? String
-        }
-        let formatted = CNContactFormatter.string(from: contact, style: .fullName)
-        let fallback = [contact.givenName, contact.familyName]
-            .filter { !$0.isEmpty }
-            .joined(separator: " ")
-        let name = formatted ?? (fallback.isEmpty ? nil : fallback)
-
+    nonisolated func contactPicker(_ picker: CNContactPickerViewController, didSelect contact: CNContact) {
+        let card = ContactDirectory.card(for: contact)
         MainActor.assumeIsolated {
-            self.finish(address.map { Pick(name: name, address: $0) })
+            self.finish(card)
         }
     }
 
@@ -64,8 +46,8 @@ final class ContactPicker: NSObject, CNContactPickerDelegate {
         }
     }
 
-    private func finish(_ pick: Pick?) {
-        continuation?.resume(returning: pick)
+    private func finish(_ card: ContactCard?) {
+        continuation?.resume(returning: card)
         continuation = nil
     }
 }
