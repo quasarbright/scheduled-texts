@@ -80,6 +80,9 @@ struct RecipientField: View {
                 }
             }
         }
+        // A form tints button labels blue, which made suggestions look like
+        // links. Messages shows them as plain names.
+        .tint(.primary)
         .accessibilityHint("Sends to this contact")
     }
 
