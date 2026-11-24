@@ -8,27 +8,35 @@ struct MessageEditorView: View {
     @EnvironmentObject private var store: MessageStore
     @EnvironmentObject private var router: Router
 
-    @State private var recipientName: String?
-    @State private var recipientAddress: String
+    @ObservedObject private var directory = ContactDirectory.shared
+
+    /// The contact picked in the "To" field.
+    @State private var recipient: ChosenRecipient?
+    /// What's typed in the "To" field. Used as the address when no contact
+    /// is picked, so a typed number can be saved as is.
+    @State private var query: String
     @State private var text: String
     @State private var sendAt: Date
-    /// The address that came with `recipientName`. Typing a different one
-    /// drops the name, so the list never shows the wrong person.
-    @State private var pickedAddress: String?
     /// Which field has the keyboard, if any.
-    @FocusState private var focus: Field?
+    @FocusState private var focus: EditorField?
     @State private var confirmingDiscard = false
-
-    private enum Field { case to, message }
 
     private let id: UUID
 
     init(existing: ScheduledMessage?) {
         self.existing = existing
         id = existing?.id ?? UUID()
-        _recipientName = State(initialValue: existing?.recipientName)
-        _recipientAddress = State(initialValue: existing?.recipientAddress ?? "")
-        _pickedAddress = State(initialValue: existing?.recipientName == nil ? nil : existing?.recipientAddress)
+        if let existing, let name = existing.recipientName {
+            _recipient = State(initialValue: ChosenRecipient(
+                name: name,
+                address: existing.recipientAddress,
+                contactID: existing.contactIdentifier
+            ))
+            _query = State(initialValue: "")
+        } else {
+            _recipient = State(initialValue: nil)
+            _query = State(initialValue: existing?.recipientAddress ?? "")
+        }
         _text = State(initialValue: existing?.body ?? "")
         _sendAt = State(initialValue: existing?.sendAt ?? Self.defaultSendTime())
     }
@@ -41,8 +49,9 @@ struct MessageEditorView: View {
     private var draft: ScheduledMessage {
         ScheduledMessage(
             id: id,
-            recipientName: recipientName,
-            recipientAddress: recipientAddress,
+            recipientName: recipient?.name,
+            contactIdentifier: recipient?.contactID,
+            recipientAddress: recipient?.address ?? query,
             body: text,
             sendAt: sendAt
         )
@@ -51,29 +60,16 @@ struct MessageEditorView: View {
     var body: some View {
         NavigationStack {
             Form {
-                Section("To") {
-                    if let recipientName {
-                        HStack {
-                            Image(systemName: "person.crop.circle.fill")
-                                .foregroundStyle(.secondary)
-                            Text(recipientName)
-                        }
-                    }
-                    TextField("Phone number or email", text: $recipientAddress)
-                        .textContentType(.telephoneNumber)
-                        .textInputAutocapitalization(.never)
-                        .autocorrectionDisabled()
-                        .focused($focus, equals: .to)
-                    Button {
-                        Task {
-                            if let pick = await ContactPicker.shared.pick() {
-                                recipientName = pick.name
-                                recipientAddress = pick.address
-                                pickedAddress = pick.address
-                            }
-                        }
-                    } label: {
-                        Label("Choose from Contacts", systemImage: "person.crop.circle.badge.plus")
+                Section {
+                    RecipientField(
+                        recipient: $recipient,
+                        query: $query,
+                        focus: $focus,
+                        directory: directory
+                    )
+                } footer: {
+                    if directory.access == .denied && recipient == nil {
+                        Text("Names won't autocomplete without Contacts access. You can turn it on in Settings.")
                     }
                 }
 
@@ -111,13 +107,15 @@ struct MessageEditorView: View {
                 }
             }
             .onAppear {
-                if existing == nil { focus = .to }
+                directory.refresh()
+                directory.load()
             }
-            .onChange(of: recipientAddress) { _, newValue in
-                if newValue != pickedAddress {
-                    recipientName = nil
-                    pickedAddress = nil
-                }
+            .task {
+                // Start in the "To" field for a new text, like Messages.
+                // Focusing during the sheet's slide-up animation is ignored.
+                guard existing == nil else { return }
+                try? await Task.sleep(nanoseconds: 450_000_000)
+                focus = .to
             }
             // Return adds a new line in the message, so the keyboard needs
             // another way out, or it covers the time picker.
@@ -165,7 +163,7 @@ struct MessageEditorView: View {
     }
 
     private var hasChanges: Bool {
-        guard let existing else { return !text.isEmpty || !recipientAddress.isEmpty }
+        guard let existing else { return !text.isEmpty || recipient != nil || !query.isEmpty }
         return draft.normalized() != existing
     }
 }

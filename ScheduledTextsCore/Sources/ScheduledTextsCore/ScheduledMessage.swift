@@ -9,6 +9,10 @@ public struct ScheduledMessage: Codable, Identifiable, Equatable, Hashable {
     public var id: UUID
     /// Display name, for example from Contacts. Nil when the person typed a number.
     public var recipientName: String?
+    /// The Contacts identifier of the person, when they were picked from
+    /// Contacts. Lets the editor offer their other numbers later.
+    /// Missing in texts saved before this existed.
+    public var contactIdentifier: String?
     /// The phone number or email address the compose sheet sends to.
     /// iMessage and SMS both go through the same compose sheet.
     public var recipientAddress: String
@@ -18,12 +22,14 @@ public struct ScheduledMessage: Codable, Identifiable, Equatable, Hashable {
     public init(
         id: UUID = UUID(),
         recipientName: String? = nil,
+        contactIdentifier: String? = nil,
         recipientAddress: String,
         body: String,
         sendAt: Date
     ) {
         self.id = id
         self.recipientName = recipientName
+        self.contactIdentifier = contactIdentifier
         self.recipientAddress = recipientAddress
         self.body = body
         self.sendAt = sendAt
