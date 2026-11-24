@@ -70,14 +70,20 @@ struct RecipientField: View {
         Button {
             choose(card, address: addressForSuggestion(card))
         } label: {
-            VStack(alignment: .leading, spacing: 2) {
-                Text(card.name)
-                    .foregroundStyle(.primary)
-                if let address = addressForSuggestion(card) {
-                    Text(describe(address))
-                        .font(.subheadline)
-                        .foregroundStyle(.secondary)
+            HStack(spacing: 12) {
+                ContactAvatar(name: card.name, image: directory.thumbnail(id: card.id), size: 36)
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(card.name)
+                        .foregroundStyle(.primary)
+                    if let address = addressForSuggestion(card) {
+                        Text(describe(address))
+                            .font(.subheadline)
+                            .foregroundStyle(.secondary)
+                    }
                 }
+                // Start the separator under the name, not at the initials
+                // (the first Text in the row), so every row's line lines up.
+                .alignmentGuide(.listRowSeparatorLeading) { $0[.leading] }
             }
         }
         // A form tints button labels blue, which made suggestions look like
@@ -90,6 +96,11 @@ struct RecipientField: View {
         HStack(spacing: 10) {
             Text("To:")
                 .foregroundStyle(.secondary)
+            ContactAvatar(
+                name: recipient.name,
+                image: directory.thumbnail(id: card(for: recipient)?.id),
+                size: 32
+            )
             VStack(alignment: .leading, spacing: 2) {
                 Text(recipient.name)
                 addressLine(recipient)

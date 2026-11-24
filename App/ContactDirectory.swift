@@ -1,4 +1,5 @@
 import Contacts
+import UIKit
 import ScheduledTextsCore
 
 /// The person's contacts, loaded once so the "To" field can suggest them
@@ -18,6 +19,9 @@ final class ContactDirectory: ObservableObject {
 
     @Published private(set) var access: Access = .unknown
     @Published private(set) var contacts: [ContactCard] = []
+    /// Contact photos, decoded once, keyed by contact id. Contacts without
+    /// a photo aren't in here.
+    @Published private(set) var thumbnails: [String: UIImage] = [:]
 
     private let store = CNContactStore()
     private var loadTask: Task<Void, Never>?
@@ -44,9 +48,11 @@ final class ContactDirectory: ObservableObject {
             }
             access = .granted
             let store = store
-            contacts = await Task.detached(priority: .userInitiated) {
+            let loaded = await Task.detached(priority: .userInitiated) {
                 Self.fetchAll(from: store)
             }.value
+            contacts = loaded.cards
+            thumbnails = loaded.thumbnails
         }
     }
 
@@ -59,26 +65,41 @@ final class ContactDirectory: ObservableObject {
         contacts.first { $0.id == id }
     }
 
+    func thumbnail(id: String?) -> UIImage? {
+        id.flatMap { thumbnails[$0] }
+    }
+
     nonisolated private static let keys: [CNKeyDescriptor] = [
         CNContactFormatter.descriptorForRequiredKeys(for: .fullName),
         CNContactNicknameKey as CNKeyDescriptor,
         CNContactOrganizationNameKey as CNKeyDescriptor,
         CNContactPhoneNumbersKey as CNKeyDescriptor,
         CNContactEmailAddressesKey as CNKeyDescriptor,
+        CNContactImageDataAvailableKey as CNKeyDescriptor,
+        CNContactThumbnailImageDataKey as CNKeyDescriptor,
     ]
 
-    nonisolated private static func fetchAll(from store: CNContactStore) -> [ContactCard] {
+    nonisolated private static func fetchAll(
+        from store: CNContactStore
+    ) -> (cards: [ContactCard], thumbnails: [String: UIImage]) {
         let request = CNContactFetchRequest(keysToFetch: keys)
         request.sortOrder = .userDefault
         var cards: [ContactCard] = []
+        var thumbnails: [String: UIImage] = [:]
         do {
             try store.enumerateContacts(with: request) { contact, _ in
-                if let card = card(for: contact) { cards.append(card) }
+                guard let card = card(for: contact) else { return }
+                cards.append(card)
+                if contact.imageDataAvailable,
+                   let data = contact.thumbnailImageData,
+                   let image = UIImage(data: data) {
+                    thumbnails[card.id] = image.preparingForDisplay() ?? image
+                }
             }
         } catch {
             print("Couldn't read contacts: \(error)")
         }
-        return cards
+        return (cards, thumbnails)
     }
 
     /// Converts a contact, or nil if it has no name and nothing to send to.
