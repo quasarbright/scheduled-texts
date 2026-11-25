@@ -4,6 +4,10 @@ import XCTest
 /// screenshot of each screen, for checking the Repeat UI.
 /// The screenshots are attachments in the test result; export them with
 /// `xcrun xcresulttool export attachments --path <xcresult> --output-path <dir>`.
+///
+/// On a fresh install, grant Contacts first or iOS's full-screen "How do you
+/// want to share contacts?" sheet covers the editor:
+/// `xcrun simctl privacy <udid> grant contacts com.quasarbright.ScheduledTexts`
 final class RepeatDemoTests: XCTestCase {
     func testWeeklyRepeat() throws {
         let app = XCUIApplication()
@@ -28,6 +32,8 @@ final class RepeatDemoTests: XCTestCase {
         if !repeatRow.waitForExistence(timeout: 3) { print("TREE:\n\(app.debugDescription)") }
         repeatRow.tap()
         XCTAssertTrue(app.navigationBars["Repeat"].waitForExistence(timeout: 5))
+        sleep(1)
+        shot("5-repeat-never")
         app.buttons["Custom"].tap()
         XCTAssertTrue(app.navigationBars["Custom"].waitForExistence(timeout: 5))
 
