@@ -23,7 +23,8 @@ struct ContentView: View {
                 list(now: context.date)
             }
             .navigationTitle("Scheduled Texts")
-            .searchable(text: $searchText, prompt: "Search texts and names")
+            // Nothing to search in an empty list, so no search field there.
+            .modifier(ListSearch(text: $searchText, enabled: !store.queue.isEmpty))
             .toolbar {
                 // Compose in the bottom right, like Mail and Notes.
                 ToolbarItemGroup(placement: .bottomBar) {
@@ -121,10 +122,9 @@ struct ContentView: View {
                 ContentUnavailableView {
                     Label("No Scheduled Texts", systemImage: "clock")
                 } description: {
-                    Text("Write a text now and get a reminder to send it later.")
-                } actions: {
-                    Button("New Text") { router.open(.new) }
-                        .buttonStyle(.borderedProminent)
+                    // The compose button in the corner is the one way in,
+                    // like Notes and Mail.
+                    Text("Tap \(Image(systemName: "square.and.pencil")) to write a text now and get a reminder to send it later.")
                 }
             }
         }
@@ -191,6 +191,20 @@ struct ContentView: View {
             if await MessageSender.shared.compose(message) == .sent {
                 store.markSent(id: id)
             }
+        }
+    }
+}
+
+/// The list's search field, like Notes. Left off when there's nothing to search.
+private struct ListSearch: ViewModifier {
+    @Binding var text: String
+    let enabled: Bool
+
+    func body(content: Content) -> some View {
+        if enabled {
+            content.searchable(text: $text, prompt: "Search texts and names")
+        } else {
+            content
         }
     }
 }
