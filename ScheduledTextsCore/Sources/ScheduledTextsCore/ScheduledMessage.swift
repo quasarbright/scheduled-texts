@@ -17,7 +17,16 @@ public struct ScheduledMessage: Codable, Identifiable, Equatable, Hashable {
     /// iMessage and SMS both go through the same compose sheet.
     public var recipientAddress: String
     public var body: String
+    /// When to ask. Remind Me Later moves this.
     public var sendAt: Date
+    /// How the text repeats. Nil sends it once.
+    public var repetition: Repetition?
+    /// The start of the repeat schedule, which sets the pattern (the day of
+    /// the month, every other week). Nil means `scheduledAt`.
+    public var seriesAnchor: Date?
+    /// The time this text was due before Remind Me Later moved it, so the
+    /// next repeat keeps to the schedule. Nil means `sendAt`.
+    public var occurrence: Date?
 
     public init(
         id: UUID = UUID(),
@@ -25,7 +34,10 @@ public struct ScheduledMessage: Codable, Identifiable, Equatable, Hashable {
         contactIdentifier: String? = nil,
         recipientAddress: String,
         body: String,
-        sendAt: Date
+        sendAt: Date,
+        repetition: Repetition? = nil,
+        seriesAnchor: Date? = nil,
+        occurrence: Date? = nil
     ) {
         self.id = id
         self.recipientName = recipientName
@@ -33,6 +45,47 @@ public struct ScheduledMessage: Codable, Identifiable, Equatable, Hashable {
         self.recipientAddress = recipientAddress
         self.body = body
         self.sendAt = sendAt
+        self.repetition = repetition
+        self.seriesAnchor = seriesAnchor
+        self.occurrence = occurrence
+    }
+
+    /// When this one was due on the schedule, before any Remind Me Later.
+    public var scheduledAt: Date { occurrence ?? sendAt }
+
+    /// Where the repeat schedule starts.
+    public var anchor: Date { seriesAnchor ?? scheduledAt }
+
+    /// The same text moved to a later time by Remind Me Later. A repeating
+    /// text remembers when it was due, so the next one stays on schedule.
+    public func reminded(at date: Date) -> ScheduledMessage {
+        var copy = self
+        if repetition != nil {
+            copy.occurrence = scheduledAt
+            copy.seriesAnchor = anchor
+        }
+        copy.sendAt = date
+        return copy
+    }
+
+    /// The next text in the series once this one is sent or skipped at
+    /// `now`. Nil when it doesn't repeat or the repeat has ended. Texts
+    /// missed while it waited aren't queued up; it picks up at the next
+    /// time after now.
+    public func nextInSeries(now: Date, calendar: Calendar = .current) -> ScheduledMessage? {
+        guard let repetition,
+              let next = repetition.nextOccurrence(after: max(scheduledAt, now), anchor: anchor, calendar: calendar)
+        else { return nil }
+        var copy = self
+        copy.seriesAnchor = anchor
+        copy.occurrence = nil
+        copy.sendAt = next
+        return copy
+    }
+
+    /// "Every Week", or nil for a text that doesn't repeat.
+    public func repeatSummary(calendar: Calendar = .current, locale: Locale = .current) -> String? {
+        repetition?.summary(anchor: anchor, calendar: calendar, locale: locale)
     }
 
     /// The name if there is one, otherwise the number or address.
@@ -63,6 +116,17 @@ public struct ScheduledMessage: Codable, Identifiable, Equatable, Hashable {
         copy.recipientAddress = recipientAddress.trimmingCharacters(in: .whitespacesAndNewlines)
         copy.body = body.trimmingCharacters(in: .whitespacesAndNewlines)
         copy.sendAt = sendAt.truncatedToMinute(calendar: calendar)
+        copy.seriesAnchor = seriesAnchor?.truncatedToMinute(calendar: calendar)
+        copy.occurrence = occurrence?.truncatedToMinute(calendar: calendar)
+        if var repetition {
+            repetition.interval = max(repetition.interval, 1)
+            if repetition.frequency != .weekly { repetition.weekdays = [] }
+            if repetition.frequency != .monthly { repetition.monthlyWeekday = nil }
+            copy.repetition = repetition
+        } else {
+            copy.seriesAnchor = nil
+            copy.occurrence = nil
+        }
         if let name = recipientName?.trimmingCharacters(in: .whitespacesAndNewlines) {
             copy.recipientName = name.isEmpty ? nil : name
         }
