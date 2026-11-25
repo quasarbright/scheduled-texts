@@ -22,28 +22,31 @@ struct ContentView: View {
             }
             .navigationTitle("Scheduled Texts")
             .toolbar {
-                ToolbarItem(placement: .primaryAction) {
+                // Compose in the bottom right, like Mail and Notes.
+                ToolbarItemGroup(placement: .bottomBar) {
+                    Spacer()
                     Button {
                         router.open(.new)
                     } label: {
-                        Label("New Text", systemImage: "plus")
+                        Label("New Text", systemImage: "square.and.pencil")
                     }
                 }
             }
-        }
-        // Pinned to the screen, outside the scrolling list, so it shows
-        // however long the list is or wherever it's scrolled.
-        .overlay(alignment: .bottom) {
-            if let change = store.lastChange {
-                UndoToast(summary: change.summary) {
-                    withAnimation { store.undo() }
-                }
-                .id(change.id)
-                .transition(.move(edge: .bottom).combined(with: .opacity))
-                .task(id: change.id) {
-                    try? await Task.sleep(for: .seconds(8))
-                    if store.lastChange?.id == change.id {
-                        withAnimation { store.dismissUndo() }
+            // Pinned to the screen, outside the scrolling list, so it shows
+            // however long the list is or wherever it's scrolled. Inside the
+            // navigation stack so it sits above the bottom toolbar.
+            .overlay(alignment: .bottom) {
+                if let change = store.lastChange {
+                    UndoToast(summary: change.summary) {
+                        withAnimation { store.undo() }
+                    }
+                    .id(change.id)
+                    .transition(.move(edge: .bottom).combined(with: .opacity))
+                    .task(id: change.id) {
+                        try? await Task.sleep(for: .seconds(8))
+                        if store.lastChange?.id == change.id {
+                            withAnimation { store.dismissUndo() }
+                        }
                     }
                 }
             }
