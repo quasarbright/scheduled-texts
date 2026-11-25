@@ -9,12 +9,11 @@ final class ComposeDemoTests: XCTestCase {
         app.launch()
         dismissAlerts()
         sleep(1)
-        shot("7-compose-empty")
+        shot("14-empty")
 
         compose(app, to: "5551234567", body: "Happy birthday! Hope it's a great one")
         compose(app, to: "5559876543", body: "Don't forget the dentist at 3")
         sleep(1)
-        shot("6-compose-button")
 
         let row = app.buttons.matching(NSPredicate(format: "label CONTAINS 'dentist'")).firstMatch
         XCTAssertTrue(row.waitForExistence(timeout: 5))
@@ -27,16 +26,20 @@ final class ComposeDemoTests: XCTestCase {
         app.buttons["Undo"].firstMatch.tap()
         sleep(2)
         compose(app, to: "5554443333", body: "Pick up the cake on the way home")
-        app.swipeDown()
         sleep(1)
+        shot("12-bottom-search")
+
+        // On iOS 26 the bottom search pill is a button until it's tapped.
+        let pill = app.searchFields.firstMatch.exists
+            ? app.searchFields.firstMatch
+            : app.buttons["Search"].firstMatch
+        XCTAssertTrue(pill.waitForExistence(timeout: 5))
+        pill.tap()
         let search = app.searchFields.firstMatch
         XCTAssertTrue(search.waitForExistence(timeout: 5))
-        shot("9-search-field")
-
-        search.tap()
         search.typeText("cake")
         sleep(1)
-        shot("10-search-results")
+        shot("13-bottom-search-typing")
 
         search.typeText("zzz")
         sleep(1)
