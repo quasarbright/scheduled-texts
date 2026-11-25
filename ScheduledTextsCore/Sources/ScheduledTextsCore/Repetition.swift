@@ -169,12 +169,18 @@ public struct Repetition: Codable, Equatable, Hashable {
 extension Repetition {
     /// The choices on the Repeat screen, in Calendar's order. Anything else
     /// is Custom.
-    public static let presets: [(title: String, rule: Repetition)] = [
-        ("Every Day", .daily),
-        ("Every Week", .weekly),
-        ("Every 2 Weeks", .biweekly),
-        ("Every Month", .monthly),
-        ("Every Year", .yearly),
+    public struct Preset: Identifiable, Equatable {
+        public let title: String
+        public let rule: Repetition
+        public var id: String { title }
+    }
+
+    public static let presets: [Preset] = [
+        Preset(title: "Every Day", rule: .daily),
+        Preset(title: "Every Week", rule: .weekly),
+        Preset(title: "Every 2 Weeks", rule: .biweekly),
+        Preset(title: "Every Month", rule: .monthly),
+        Preset(title: "Every Year", rule: .yearly),
     ]
 
     /// The preset this rule is, ignoring the end date. A weekly rule whose

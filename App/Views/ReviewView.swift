@@ -9,6 +9,8 @@ struct ReviewView: View {
     @EnvironmentObject private var store: MessageStore
     @EnvironmentObject private var router: Router
 
+    @State private var askingDontSend: ScheduledMessage?
+
     var body: some View {
         NavigationStack {
             VStack(spacing: 16) {
@@ -35,9 +37,14 @@ struct ReviewView: View {
                             .containerRelativeFrame(.horizontal, alignment: .trailing) { width, _ in width * 0.8 }
                             .frame(maxWidth: .infinity, alignment: .trailing)
 
-                        Text("Scheduled for \(SendTimeFormat.string(for: message.sendAt))")
-                            .font(.footnote)
-                            .foregroundStyle(.secondary)
+                        VStack(alignment: .leading, spacing: 4) {
+                            Text("Scheduled for \(SendTimeFormat.string(for: message.sendAt))")
+                            if let summary = message.repeatSummary() {
+                                Label(summary, systemImage: "repeat")
+                            }
+                        }
+                        .font(.footnote)
+                        .foregroundStyle(.secondary)
                     }
                     .frame(maxWidth: .infinity, alignment: .leading)
                 }
@@ -77,8 +84,11 @@ struct ReviewView: View {
                     .buttonStyle(.bordered)
 
                     Button(role: .destructive) {
-                        store.delete(id: message.id)
-                        router.close()
+                        if store.dontSendIfOneOff(message) {
+                            router.close()
+                        } else {
+                            askingDontSend = message
+                        }
                     } label: {
                         Label("Don't Send", systemImage: "xmark")
                             .frame(maxWidth: .infinity)
@@ -88,6 +98,9 @@ struct ReviewView: View {
                 .controlSize(.large)
             }
             .padding()
+            .dontSendDialog(asking: $askingDontSend, store: store) {
+                router.close()
+            }
             .navigationTitle("Send this text?")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {

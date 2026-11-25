@@ -10,6 +10,8 @@ struct ContentView: View {
 
     @State private var notificationsAllowed = true
     @State private var unsendable: ScheduledMessage?
+    /// The repeating text being asked about by Don't Send.
+    @State private var askingDontSend: ScheduledMessage?
 
     var body: some View {
         NavigationStack {
@@ -47,6 +49,7 @@ struct ContentView: View {
             }
         }
         .animation(.snappy, value: store.lastChange)
+        .dontSendDialog(asking: $askingDontSend, store: store)
         .sheet(item: $router.sheet) { route in
             sheet(for: route)
         }
@@ -128,7 +131,9 @@ struct ContentView: View {
         .buttonStyle(.plain)
         .swipeActions(edge: .trailing) {
             Button(role: .destructive) {
-                store.delete(id: message.id)
+                if !store.dontSendIfOneOff(message) {
+                    askingDontSend = message
+                }
             } label: {
                 Label("Don't Send", systemImage: "xmark")
             }
@@ -218,9 +223,16 @@ struct MessageRow: View {
     }
 
     private var time: some View {
-        Text(SendTimeFormat.string(for: message.sendAt, now: now))
-            .font(.subheadline)
-            .foregroundStyle(message.isDue(at: now) ? Color.orange : Color.secondary)
+        HStack(spacing: 4) {
+            if let summary = message.repeatSummary() {
+                Image(systemName: "repeat")
+                    .imageScale(.small)
+                    .accessibilityLabel(summary)
+            }
+            Text(SendTimeFormat.string(for: message.sendAt, now: now))
+        }
+        .font(.subheadline)
+        .foregroundStyle(message.isDue(at: now) ? Color.orange : Color.secondary)
     }
 }
 

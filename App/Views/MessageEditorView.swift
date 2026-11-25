@@ -17,6 +17,9 @@ struct MessageEditorView: View {
     @State private var query: String
     @State private var text: String
     @State private var sendAt: Date
+    @State private var repetition: Repetition?
+    /// The repeating text being asked about by Don't Send.
+    @State private var askingDontSend: ScheduledMessage?
     /// Which field has the keyboard, if any.
     @FocusState private var focus: EditorField?
     @State private var confirmingDiscard = false
@@ -39,6 +42,7 @@ struct MessageEditorView: View {
         }
         _text = State(initialValue: existing?.body ?? "")
         _sendAt = State(initialValue: existing?.sendAt ?? Self.defaultSendTime())
+        _repetition = State(initialValue: existing?.repetition)
     }
 
     /// An hour from now, on the minute.
@@ -47,13 +51,21 @@ struct MessageEditorView: View {
     }
 
     private var draft: ScheduledMessage {
-        ScheduledMessage(
+        // A repeating text keeps its place in the schedule unless the time
+        // or the repeat changed, which starts the schedule over from here.
+        let keepsSchedule = existing.map {
+            $0.sendAt == sendAt.truncatedToMinute() && $0.repetition == repetition
+        } ?? false
+        return ScheduledMessage(
             id: id,
             recipientName: recipient?.name,
             contactIdentifier: recipient?.contactID,
             recipientAddress: recipient?.address ?? query,
             body: text,
-            sendAt: sendAt
+            sendAt: sendAt,
+            repetition: repetition,
+            seriesAnchor: keepsSchedule ? existing?.seriesAnchor : nil,
+            occurrence: keepsSchedule ? existing?.occurrence : nil
         )
     }
 
@@ -81,6 +93,21 @@ struct MessageEditorView: View {
 
                 Section {
                     DatePicker("Remind me at", selection: $sendAt)
+                    NavigationLink {
+                        RepeatPicker(repetition: $repetition, anchor: draft.anchor)
+                    } label: {
+                        LabeledContent("Repeat", value: draft.repeatSummary() ?? "Never")
+                    }
+                    if repetition != nil {
+                        NavigationLink {
+                            EndRepeatPicker(repetition: $repetition, anchor: draft.anchor)
+                        } label: {
+                            LabeledContent(
+                                "End Repeat",
+                                value: repetition?.endDate?.formatted(date: .abbreviated, time: .omitted) ?? "Never"
+                            )
+                        }
+                    }
                 } header: {
                     Text("When")
                 } footer: {
@@ -105,8 +132,11 @@ struct MessageEditorView: View {
                         .disabled(!draft.isValid)
 
                         Button(role: .destructive) {
-                            store.delete(id: existing.id)
-                            router.close()
+                            if store.dontSendIfOneOff(existing) {
+                                router.close()
+                            } else {
+                                askingDontSend = existing
+                            }
                         } label: {
                             // A form tints the icon blue unless told otherwise.
                             Label("Don't Send", systemImage: "xmark")
@@ -114,6 +144,9 @@ struct MessageEditorView: View {
                         }
                     }
                 }
+            }
+            .dontSendDialog(asking: $askingDontSend, store: store) {
+                router.close()
             }
             .onAppear {
                 directory.refresh()

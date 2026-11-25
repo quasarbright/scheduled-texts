@@ -53,12 +53,18 @@ final class MessageStore: ObservableObject {
 
     @Published private(set) var lastChange: UndoableChange?
 
-    /// Removes a text. `undoable` is false when nobody's looking (a
+    /// Removes a text, and for a repeating text every later time too.
+    /// `undoable` is false when nobody's looking (a
     /// notification action), so no Undo shows up later.
     func delete(id: UUID, undoable: Bool = true) {
         guard let removed = queue.remove(id: id) else { return }
         lastChange = undoable
-            ? UndoableChange(summary: "Won't send to \(removed.displayRecipient)", previous: removed)
+            ? UndoableChange(
+                summary: removed.repetition == nil
+                    ? "Won't send to \(removed.displayRecipient)"
+                    : "Stopped repeating texts to \(removed.displayRecipient)",
+                previous: removed
+            )
             : nil
         persist()
         resync()
@@ -68,7 +74,7 @@ final class MessageStore: ObservableObject {
     func remindLater(id: UUID, _ option: RemindLater, undoable: Bool = true, now: Date = Date()) {
         guard var message = queue.message(id: id) else { return }
         let previous = message
-        message.sendAt = option.date(from: now)
+        message = message.reminded(at: option.date(from: now))
         save(message)
         lastChange = undoable
             ? UndoableChange(
@@ -89,9 +95,33 @@ final class MessageStore: ObservableObject {
         lastChange = nil
     }
 
-    /// The person tapped Send in the compose sheet, so the text is done.
-    func markSent(id: UUID) {
-        delete(id: id, undoable: false)
+    /// The person tapped Send in the compose sheet, so the text is done. A
+    /// repeating text moves on to its next time instead.
+    func markSent(id: UUID, now: Date = Date()) {
+        guard let message = queue.message(id: id) else { return }
+        if let next = message.nextInSeries(now: now) {
+            lastChange = nil
+            save(next)
+        } else {
+            delete(id: id, undoable: false)
+        }
+    }
+
+    /// Don't Send for one time of a repeating text: moves it on to its next
+    /// time. Deletes it when the repeat has ended, or when it doesn't repeat.
+    func skip(id: UUID, undoable: Bool = true, now: Date = Date()) {
+        guard let message = queue.message(id: id) else { return }
+        guard let next = message.nextInSeries(now: now) else {
+            delete(id: id, undoable: undoable)
+            return
+        }
+        save(next)
+        lastChange = undoable
+            ? UndoableChange(
+                summary: "Skipped. Next one \(SendTimeFormat.string(for: next.sendAt, now: now))",
+                previous: message
+            )
+            : nil
     }
 
     /// Brings notifications and the badge up to date. Syncs run one at a
