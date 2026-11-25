@@ -12,6 +12,8 @@ struct ContentView: View {
     @State private var unsendable: ScheduledMessage?
     /// The repeating text being asked about by Don't Send.
     @State private var askingDontSend: ScheduledMessage?
+    /// What's typed in the search field, like Notes.
+    @State private var searchText = ""
 
     var body: some View {
         NavigationStack {
@@ -21,6 +23,7 @@ struct ContentView: View {
                 list(now: context.date)
             }
             .navigationTitle("Scheduled Texts")
+            .searchable(text: $searchText, prompt: "Search texts and names")
             .toolbar {
                 // Compose in the bottom right, like Mail and Notes.
                 ToolbarItemGroup(placement: .bottomBar) {
@@ -82,8 +85,8 @@ struct ContentView: View {
 
     @ViewBuilder
     private func list(now: Date) -> some View {
-        let due = store.queue.due(at: now)
-        let upcoming = store.queue.upcoming(at: now)
+        let due = store.queue.due(at: now).filter { $0.matches(search: searchText) }
+        let upcoming = store.queue.upcoming(at: now).filter { $0.matches(search: searchText) }
 
         List {
             if !notificationsAllowed {
@@ -112,7 +115,9 @@ struct ContentView: View {
         .scrollContentBackground(.hidden)
         .background(Color(.systemGroupedBackground))
         .overlay {
-            if store.queue.isEmpty && notificationsAllowed {
+            if !store.queue.isEmpty && due.isEmpty && upcoming.isEmpty {
+                ContentUnavailableView.search(text: searchText)
+            } else if store.queue.isEmpty && notificationsAllowed {
                 ContentUnavailableView {
                     Label("No Scheduled Texts", systemImage: "clock")
                 } description: {

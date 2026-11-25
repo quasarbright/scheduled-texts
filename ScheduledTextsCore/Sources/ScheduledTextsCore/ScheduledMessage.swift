@@ -102,6 +102,25 @@ public struct ScheduledMessage: Codable, Identifiable, Equatable, Hashable {
         sendAt <= now
     }
 
+    /// Search on the main list: true when every word of `query` is in the
+    /// text, the name or the address, ignoring case and accents. Digits
+    /// also match a phone number however it's punctuated, so "5551234"
+    /// finds "(555) 123-4567".
+    public func matches(search query: String) -> Bool {
+        let words = query.split(whereSeparator: \.isWhitespace).map(String.init)
+        guard !words.isEmpty else { return true }
+        let fields = [body, recipientName ?? "", recipientAddress]
+        let addressDigits = recipientAddress.filter(\.isNumber)
+        return words.allSatisfy { word in
+            if fields.contains(where: { $0.range(of: word, options: [.caseInsensitive, .diacriticInsensitive]) != nil }) {
+                return true
+            }
+            let digits = word.filter(\.isNumber)
+            return !digits.isEmpty && digits.count == word.filter { !"()-+.".contains($0) }.count
+                && addressDigits.contains(digits)
+        }
+    }
+
     /// A message needs someone to send to and something to say.
     public var isValid: Bool {
         !recipientAddress.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
