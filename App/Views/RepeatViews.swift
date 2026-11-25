@@ -35,6 +35,7 @@ struct RepeatPicker: View {
                     HStack {
                         VStack(alignment: .leading, spacing: 2) {
                             Text("Custom")
+                                .foregroundStyle(Color.primary)
                             if let repetition, preset == nil {
                                 Text(repetition.summary(anchor: anchor))
                                     .font(.footnote)
@@ -98,7 +99,7 @@ struct CustomRepeatView: View {
                         Text(intervalText)
                             .foregroundStyle(pickingInterval ? Color.accentColor : .secondary)
                     }
-                    .foregroundStyle(.primary)
+                    .foregroundStyle(Color.primary)
                 }
                 if pickingInterval {
                     HStack(spacing: 0) {
@@ -279,8 +280,10 @@ struct CheckRow: View {
 
     var body: some View {
         HStack {
+            // Color.primary, not .primary: inside a Button, .primary is
+            // the button's blue.
             Text(title)
-                .foregroundStyle(.primary)
+                .foregroundStyle(Color.primary)
             Spacer()
             if checked {
                 Image(systemName: "checkmark")
