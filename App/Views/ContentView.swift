@@ -23,19 +23,13 @@ struct ContentView: View {
                 list(now: context.date)
             }
             .navigationTitle("Scheduled Texts")
-            // Nothing to search in an empty list, so no search field there.
-            .modifier(ListSearch(text: $searchText, enabled: !store.queue.isEmpty))
-            .toolbar {
-                // Compose in the bottom right, like Mail and Notes.
-                ToolbarItemGroup(placement: .bottomBar) {
-                    Spacer()
-                    Button {
-                        router.open(.new)
-                    } label: {
-                        Label("New Text", systemImage: "square.and.pencil")
-                    }
-                }
-            }
+            // Search and compose share the bottom bar, like Notes. Nothing
+            // to search in an empty list, so no search field there.
+            .modifier(BottomBar(
+                searchText: $searchText,
+                searchable: !store.queue.isEmpty,
+                compose: { router.open(.new) }
+            ))
             // Pinned to the screen, outside the scrolling list, so it shows
             // however long the list is or wherever it's scrolled. Inside the
             // navigation stack so it sits above the bottom toolbar.
@@ -196,15 +190,48 @@ struct ContentView: View {
 }
 
 /// The list's search field, like Notes. Left off when there's nothing to search.
-private struct ListSearch: ViewModifier {
-    @Binding var text: String
-    let enabled: Bool
+/// The bottom of the list: a search field with the compose button to its
+/// right, like Notes on iOS 26. Older iOS puts search under the title and
+/// compose alone in the bottom bar.
+private struct BottomBar: ViewModifier {
+    @Binding var searchText: String
+    let searchable: Bool
+    let compose: () -> Void
 
     func body(content: Content) -> some View {
-        if enabled {
-            content.searchable(text: $text, prompt: "Search texts and names")
+        if #available(iOS 26, *) {
+            if searchable {
+                content
+                    .searchable(text: $searchText, prompt: "Search")
+                    .toolbar {
+                        DefaultToolbarItem(kind: .search, placement: .bottomBar)
+                        ToolbarSpacer(.fixed, placement: .bottomBar)
+                        ToolbarItem(placement: .bottomBar) { composeButton }
+                    }
+            } else {
+                content.toolbar {
+                    ToolbarSpacer(.flexible, placement: .bottomBar)
+                    ToolbarItem(placement: .bottomBar) { composeButton }
+                }
+            }
         } else {
-            content
+            let base = content.toolbar {
+                ToolbarItemGroup(placement: .bottomBar) {
+                    Spacer()
+                    composeButton
+                }
+            }
+            if searchable {
+                base.searchable(text: $searchText, prompt: "Search texts and names")
+            } else {
+                base
+            }
+        }
+    }
+
+    private var composeButton: some View {
+        Button(action: compose) {
+            Label("New Text", systemImage: "square.and.pencil")
         }
     }
 }
