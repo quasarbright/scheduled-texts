@@ -11,7 +11,7 @@ An iPhone app for texts you want to send later, but only if you still want to se
   - **Don't Send** deletes it quietly without opening the app.
 - **Undo** shows at the bottom of the app for 8 seconds after you delete a text or pick Remind Me Later.
 - **Missed notifications stay** in Notification Center until you deal with them, and the app icon badge counts texts that are waiting.
-- **The app lists everything pending**: "Ready to Send" for texts whose time has come, and "Scheduled" for later ones. Swipe right to send now, swipe left to delete.
+- **The app lists everything pending**: "Ready to Send" for texts whose time has come, and "Scheduled" for later ones. Swipe right to send now, swipe left to delete. Tapping a scheduled text opens it for editing, with a Send Now button that sends it right away instead of waiting.
 - **Pick who it's for like in Messages.** Type a name in the "To:" field and tap a suggestion, or type a phone number or email. Picking a person uses their iPhone or mobile number, and the number under their name is a menu for switching to another one. A picked contact shows by name in the list and the notification. Without Contacts access, a "Choose from Contacts" button opens the system picker instead.
 - **iMessage and SMS** both work. The system compose sheet picks the right one, so Android contacts are fine.
 

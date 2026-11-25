@@ -34,6 +34,7 @@ final class Router: ObservableObject {
     func open(_ route: Route) {
         switch route {
         case .send(let id):
+            returnAfterEdit = nil
             sheet = nil
             pendingSend = id
         default:

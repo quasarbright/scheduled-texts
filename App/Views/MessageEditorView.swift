@@ -95,6 +95,15 @@ struct MessageEditorView: View {
 
                 if let existing {
                     Section {
+                        // Sends this one now instead of waiting. Any edits
+                        // are saved first, so the compose sheet gets them.
+                        Button {
+                            sendNow()
+                        } label: {
+                            Label("Send Now", systemImage: "paperplane.fill")
+                        }
+                        .disabled(!draft.isValid)
+
                         Button(role: .destructive) {
                             store.delete(id: existing.id)
                             router.close()
@@ -154,6 +163,16 @@ struct MessageEditorView: View {
             }
         }
         .interactiveDismissDisabled(hasChanges)
+    }
+
+    /// Saves any edits, closes the editor and opens the prefilled compose
+    /// sheet. The text leaves the list once it's sent, like the Send
+    /// button and the swipe action.
+    private func sendNow() {
+        if hasChanges {
+            store.save(draft)
+        }
+        router.open(.send(id))
     }
 
     /// Leaves without saving: back to "Send this text?" if that's where the
