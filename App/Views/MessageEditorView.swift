@@ -4,6 +4,9 @@ import SwiftUI
 /// Create a new scheduled text, or change one.
 struct MessageEditorView: View {
     let existing: ScheduledMessage?
+    /// What a filled-in new text started as, so Cancel only asks once
+    /// something was changed.
+    let template: ScheduledMessage?
 
     @EnvironmentObject private var store: MessageStore
     @EnvironmentObject private var router: Router
@@ -30,6 +33,7 @@ struct MessageEditorView: View {
     /// Cancel throws it away.
     init(existing: ScheduledMessage?, template: ScheduledMessage? = nil) {
         self.existing = existing
+        self.template = template
         let source = existing ?? template
         id = source?.id ?? UUID()
         if let source, let name = source.recipientName {
@@ -263,6 +267,7 @@ struct MessageEditorView: View {
     }
 
     private var hasChanges: Bool {
+        if existing == nil, let template { return draft.normalized() != template.normalized() }
         guard let existing else { return !text.isEmpty || recipient != nil || !query.isEmpty }
         return draft.normalized() != existing
     }

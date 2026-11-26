@@ -71,7 +71,21 @@ final class BirthdayTests: XCTestCase {
     func testLeapDayWaitsForLeapYear() {
         var s = on()
         let q = BirthdayPlanner.reconcile(queue: MessageQueue(), contacts: [leap], settings: &s, now: now, calendar: calendar)
-        XCTAssertEqual(q.messages.first?.sendAt, date(2028, 2, 29, 9))
+        XCTAssertEqual(q.messages.first?.sendAt, date(2027, 2, 28, 9))
+    }
+
+    func testLeapDayOnTheTwentyNinthInLeapYears() {
+        var s = on()
+        let afterSending2027 = date(2027, 3, 1)
+        var q = BirthdayPlanner.reconcile(queue: MessageQueue(), contacts: [leap], settings: &s, now: now, calendar: calendar)
+        // Sent on Feb 28, 2027; the yearly repeat lands on Feb 28, 2028.
+        q.upsert(q.messages[0].nextInSeries(now: date(2027, 2, 28, 9, 5), calendar: calendar)!)
+        q = BirthdayPlanner.reconcile(queue: q, contacts: [leap], settings: &s, now: afterSending2027, calendar: calendar)
+        XCTAssertEqual(q.messages[0].sendAt, date(2028, 2, 29, 9))
+        // And after that, back to Feb 28 in 2029.
+        q.upsert(q.messages[0].nextInSeries(now: date(2028, 2, 29, 9, 5), calendar: calendar)!)
+        q = BirthdayPlanner.reconcile(queue: q, contacts: [leap], settings: &s, now: date(2028, 3, 1), calendar: calendar)
+        XCTAssertEqual(q.messages[0].sendAt, date(2029, 2, 28, 9))
     }
 
     func testMessageTimeAndOverrideUpdates() {

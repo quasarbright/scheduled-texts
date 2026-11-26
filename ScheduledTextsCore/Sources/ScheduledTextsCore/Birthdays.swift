@@ -56,23 +56,33 @@ public struct BirthdayContact: Equatable, Identifiable {
     }
 
     /// The next birthday at `hour:minute` strictly after `now`. A Feb 29
-    /// birthday waits for a leap year, like a yearly repeat does.
+    /// birthday is on Feb 28 in other years, like most calendars do.
     public func nextBirthday(after now: Date, hour: Int, minute: Int, calendar: Calendar = .current) -> Date? {
-        calendar.nextDate(
-            after: now,
-            matching: DateComponents(month: month, day: day, hour: hour, minute: minute),
-            matchingPolicy: .strict
-        )
+        let year = calendar.component(.year, from: now)
+        for y in year...(year + 1) {
+            guard let date = birthday(in: y, calendar: calendar),
+                  let time = calendar.date(bySettingHour: hour, minute: minute, second: 0, of: date) else { continue }
+            if time > now { return time }
+        }
+        return nil
+    }
+
+    /// The day of the birthday in `year`.
+    public func birthday(in year: Int, calendar: Calendar = .current) -> Date? {
+        var d = day
+        if month == 2 && day == 29,
+           let feb = calendar.date(from: DateComponents(year: year, month: 2)),
+           calendar.range(of: .day, in: .month, for: feb)?.count == 28 {
+            d = 28
+        }
+        return calendar.date(from: DateComponents(year: year, month: month, day: d))
     }
 
     /// The day of the next birthday, counting today.
     public func nextBirthdayDay(from now: Date, calendar: Calendar = .current) -> Date? {
         let today = calendar.startOfDay(for: now)
-        return calendar.nextDate(
-            after: today.addingTimeInterval(-1),
-            matching: DateComponents(month: month, day: day, hour: 0, minute: 0),
-            matchingPolicy: .strict
-        )
+        let year = calendar.component(.year, from: now)
+        return (year...(year + 1)).lazy.compactMap { self.birthday(in: $0, calendar: calendar) }.first { $0 >= today }
     }
 }
 
@@ -127,16 +137,14 @@ public enum BirthdayPlanner {
                 let before = existing
                 existing.body = body
                 existing.recipientName = contact.name
-                // Not when it's ready, or moved by Remind Me Later.
-                if !existing.isDue(at: now) && existing.occurrence == nil {
-                    let parts = calendar.dateComponents([.hour, .minute, .month, .day], from: existing.sendAt)
-                    if parts.hour != settings.hour || parts.minute != settings.minute
-                        || parts.month != contact.month || parts.day != contact.day,
-                       let next = contact.nextBirthday(after: now, hour: settings.hour, minute: settings.minute, calendar: calendar) {
-                        existing.sendAt = next
-                        existing.seriesAnchor = next
-                        existing.occurrence = nil
-                    }
+                // Keep it on the next birthday at the set time. Not when it's
+                // ready, or moved by Remind Me Later. This also moves a
+                // Feb 29 birthday between Feb 28 and Feb 29 each year.
+                if !existing.isDue(at: now) && existing.occurrence == nil,
+                   let next = contact.nextBirthday(after: now, hour: settings.hour, minute: settings.minute, calendar: calendar),
+                   next != existing.sendAt {
+                    existing.sendAt = next
+                    existing.seriesAnchor = next
                 }
                 if existing != before { queue.upsert(existing) }
                 continue

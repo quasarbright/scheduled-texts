@@ -167,7 +167,7 @@ struct ContentView: View {
         .overlay {
             if !store.queue.isEmpty && due.isEmpty && upcoming.isEmpty && birthdayTexts.isEmpty && prompt == nil {
                 ContentUnavailableView.search(text: searchText)
-            } else if store.queue.isEmpty && notificationsAllowed {
+            } else if store.queue.isEmpty && notificationsAllowed && prompt == nil {
                 ContentUnavailableView {
                     Label("No Scheduled Texts", systemImage: "clock")
                 } description: {
