@@ -54,6 +54,17 @@ struct ContentView: View {
         .sheet(item: $router.sheet) { route in
             sheet(for: route)
         }
+        .onOpenURL { url in
+            // Taps on the widgets.
+            switch DeepLink(url: url) {
+            case .list: router.close()
+            case .new: router.open(.new)
+            case .text(let id):
+                guard let message = store.message(id: id) else { router.close(); return }
+                router.open(message.isDue(at: Date()) ? .review(id) : .edit(id))
+            case nil: break
+            }
+        }
         .onReceive(router.$pendingSend.compactMap { $0 }) { id in
             router.pendingSend = nil
             send(id)

@@ -1,5 +1,6 @@
 import Foundation
 import ScheduledTextsCore
+import WidgetKit
 
 /// The app's copy of the queue. Saves to disk and updates notifications
 /// after every change.
@@ -27,9 +28,23 @@ final class MessageStore: ObservableObject {
         }
     }
 
+    /// In the app group, so the widgets can read it. Texts saved before
+    /// the widgets existed are moved there the first time.
     nonisolated static var defaultFileURL: URL {
-        FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask)[0]
+        let old = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask)[0]
             .appendingPathComponent("messages.json")
+        guard let shared = SharedContainer.messagesURL else { return old }
+        let files = FileManager.default
+        if files.fileExists(atPath: old.path), !files.fileExists(atPath: shared.path) {
+            do {
+                try files.createDirectory(at: shared.deletingLastPathComponent(), withIntermediateDirectories: true)
+                try files.moveItem(at: old, to: shared)
+            } catch {
+                print("Couldn't move messages to the app group: \(error)")
+                return old
+            }
+        }
+        return shared
     }
 
     func message(id: UUID) -> ScheduledMessage? {
@@ -148,5 +163,6 @@ final class MessageStore: ObservableObject {
         } catch {
             print("Couldn't save messages: \(error)")
         }
+        WidgetCenter.shared.reloadAllTimelines()
     }
 }
