@@ -267,7 +267,14 @@ struct MessageEditorView: View {
     }
 
     private var hasChanges: Bool {
-        if existing == nil, let template { return draft.normalized() != template.normalized() }
+        if existing == nil, var template {
+            // A new text has no place in a schedule yet, so compare only
+            // what you can see and change.
+            template.seriesAnchor = nil
+            template.occurrence = nil
+            template.birthdayContactID = nil
+            return draft.normalized() != template.normalized()
+        }
         guard let existing else { return !text.isEmpty || recipient != nil || !query.isEmpty }
         return draft.normalized() != existing
     }

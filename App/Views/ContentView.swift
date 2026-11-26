@@ -417,13 +417,19 @@ private struct BirthdaysRow: View {
                 .foregroundStyle(.pink)
             VStack(alignment: .leading, spacing: 2) {
                 Text("Birthdays").font(.headline)
-                Text("\(count) \(count == 1 ? "person" : "people") · \(next.displayRecipient) next, \(next.sendAt.formatted(.dateTime.month(.abbreviated).day()))")
+                // First name only, so the date still fits beside a long name.
+                Text("\(count) \(count == 1 ? "person" : "people") · \(nextFirstName) next, \(next.sendAt.formatted(.dateTime.month(.abbreviated).day()))")
                     .font(.subheadline)
                     .foregroundStyle(.secondary)
-                    .lineLimit(1)
+                    .lineLimit(2)
             }
         }
         .padding(.vertical, 2)
+    }
+
+    private var nextFirstName: String {
+        let name = next.displayRecipient
+        return name.split(separator: " ").first.map(String.init) ?? name
     }
 }
 
