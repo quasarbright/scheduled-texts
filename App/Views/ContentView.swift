@@ -456,21 +456,28 @@ private struct BirthdayPromptCard: View {
                 .buttonStyle(.plain)
                 .accessibilityLabel("Not Now")
             }
-            HStack(spacing: 8) {
-                Button(action: schedule) {
-                    Text("Schedule for \(firstName)").frame(maxWidth: .infinity)
-                }
-                .buttonStyle(.borderedProminent)
-                Button(action: turnOnForEveryone) {
-                    Text("Turn On for Everyone").frame(maxWidth: .infinity)
-                }
-                .buttonStyle(.bordered)
+            // Side by side when both fit at full size, otherwise stacked, so
+            // the two never end up in different text sizes.
+            ViewThatFits(in: .horizontal) {
+                HStack(spacing: 8) { buttons }
+                VStack(spacing: 8) { buttons }
             }
             .font(.subheadline.weight(.semibold))
             .lineLimit(1)
-            .minimumScaleFactor(0.8)
         }
         .padding(.vertical, 4)
+    }
+
+    @ViewBuilder
+    private var buttons: some View {
+        Button(action: schedule) {
+            Text("Schedule for \(firstName)").fixedSize().frame(maxWidth: .infinity)
+        }
+        .buttonStyle(.borderedProminent)
+        Button(action: turnOnForEveryone) {
+            Text("Turn On for Everyone").fixedSize().frame(maxWidth: .infinity)
+        }
+        .buttonStyle(.bordered)
     }
 
     private var firstName: String {
