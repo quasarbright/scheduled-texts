@@ -27,6 +27,10 @@ public struct ScheduledMessage: Codable, Identifiable, Equatable, Hashable {
     /// The time this text was due before Remind Me Later moved it, so the
     /// next repeat keeps to the schedule. Nil means `sendAt`.
     public var occurrence: Date?
+    /// Set on the yearly texts that Birthday Texts makes: the Contacts
+    /// identifier of the person whose birthday it is. Nil for texts the
+    /// person wrote, including a birthday text they scheduled by hand.
+    public var birthdayContactID: String?
 
     public init(
         id: UUID = UUID(),
@@ -37,7 +41,8 @@ public struct ScheduledMessage: Codable, Identifiable, Equatable, Hashable {
         sendAt: Date,
         repetition: Repetition? = nil,
         seriesAnchor: Date? = nil,
-        occurrence: Date? = nil
+        occurrence: Date? = nil,
+        birthdayContactID: String? = nil
     ) {
         self.id = id
         self.recipientName = recipientName
@@ -48,6 +53,7 @@ public struct ScheduledMessage: Codable, Identifiable, Equatable, Hashable {
         self.repetition = repetition
         self.seriesAnchor = seriesAnchor
         self.occurrence = occurrence
+        self.birthdayContactID = birthdayContactID
     }
 
     /// When this one was due on the schedule, before any Remind Me Later.

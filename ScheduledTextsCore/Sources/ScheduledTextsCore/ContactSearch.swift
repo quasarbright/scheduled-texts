@@ -35,9 +35,13 @@ public struct ContactCard: Identifiable, Equatable {
     /// Other names to match against, like a nickname or company.
     public var otherNames: [String]
     public var addresses: [ContactAddress]
+    /// Month and day (and year when known) from Contacts. Nil when there's
+    /// no birthday.
+    public var birthday: DateComponents?
 
-    public init(id: String, name: String, otherNames: [String] = [], addresses: [ContactAddress]) {
+    public init(id: String, name: String, otherNames: [String] = [], addresses: [ContactAddress], birthday: DateComponents? = nil) {
         self.id = id
+        self.birthday = birthday
         self.name = name
         self.otherNames = otherNames
         self.addresses = addresses
