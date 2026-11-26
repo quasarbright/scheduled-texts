@@ -79,7 +79,7 @@ final class ContactDirectory: ObservableObject {
         CNContactThumbnailImageDataKey as CNKeyDescriptor,
     ]
 
-    nonisolated private static func fetchAll(
+    nonisolated static func fetchAll(
         from store: CNContactStore
     ) -> (cards: [ContactCard], thumbnails: [String: UIImage]) {
         let request = CNContactFetchRequest(keysToFetch: keys)
