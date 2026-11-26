@@ -1,8 +1,12 @@
 import Foundation
+import ScheduledTextsCore
 
 /// Where the app should go next: a sheet, or the system compose screen.
 enum Route: Identifiable, Equatable {
     case new
+    /// New Text, filled in ("Schedule for Kate").
+    case draft(ScheduledMessage)
+    case settings
     /// "Send this text?" with Send, Edit and Don't Send.
     case review(UUID)
     case edit(UUID)
@@ -12,6 +16,8 @@ enum Route: Identifiable, Equatable {
     var id: String {
         switch self {
         case .new: return "new"
+        case .draft(let message): return "draft-\(message.id)"
+        case .settings: return "settings"
         case .review(let id): return "review-\(id)"
         case .edit(let id): return "edit-\(id)"
         case .send(let id): return "send-\(id)"
@@ -63,6 +69,10 @@ final class Router: ObservableObject {
             sheet = nil
         }
     }
+
+    /// Set by "Turn On for Everyone": Settings opens and flips the switch
+    /// on where you can see it.
+    @Published var turnOnBirthdaysWhenShown = false
 
     func close() {
         returnAfterEdit = nil

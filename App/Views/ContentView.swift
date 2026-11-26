@@ -14,6 +14,7 @@ struct ContentView: View {
     @State private var askingDontSend: ScheduledMessage?
     /// What's typed in the search field, like Notes.
     @State private var searchText = ""
+    @ObservedObject private var birthdays = BirthdayStore.shared
 
     var body: some View {
         NavigationStack {
@@ -23,6 +24,15 @@ struct ContentView: View {
                 list(now: context.date)
             }
             .navigationTitle("Scheduled Texts")
+            .toolbar {
+                ToolbarItem(placement: .topBarTrailing) {
+                    Button {
+                        router.open(.settings)
+                    } label: {
+                        Label("Settings", systemImage: "gearshape")
+                    }
+                }
+            }
             // Search and compose share the bottom bar, like Notes. Nothing
             // to search in an empty list, so no search field there.
             .modifier(BottomBar(
@@ -91,13 +101,40 @@ struct ContentView: View {
 
     @ViewBuilder
     private func list(now: Date) -> some View {
+        let searching = !searchText.trimmingCharacters(in: .whitespaces).isEmpty
         let due = store.queue.due(at: now).filter { $0.matches(search: searchText) }
-        let upcoming = store.queue.upcoming(at: now).filter { $0.matches(search: searchText) }
+        let allUpcoming = store.queue.upcoming(at: now).filter { $0.matches(search: searchText) }
+        // Birthday texts fold into one Birthdays row until they're ready,
+        // so a year of birthdays doesn't fill the list. Search still finds them.
+        let upcoming = searching ? allUpcoming : allUpcoming.filter { $0.birthdayContactID == nil }
+        let birthdayTexts = searching ? [] : allUpcoming.filter { $0.birthdayContactID != nil }
+        let prompt = searching ? nil : birthdays.prompt(queue: store.queue, now: now)
 
         List {
             if !notificationsAllowed {
                 Section {
                     NotificationsOffNotice()
+                }
+            }
+
+            if let prompt {
+                Section {
+                    BirthdayPromptCard(
+                        contact: prompt.contact,
+                        day: prompt.day,
+                        schedule: {
+                            if let text = BirthdayPlanner.handmadeText(for: prompt.contact, settings: birthdays.settings, now: Date()) {
+                                router.open(.draft(text))
+                            }
+                        },
+                        turnOnForEveryone: {
+                            router.turnOnBirthdaysWhenShown = true
+                            router.open(.settings)
+                        },
+                        dismiss: {
+                            withAnimation { birthdays.dismissPrompt(prompt.contact, day: prompt.day) }
+                        }
+                    )
                 }
             }
 
@@ -109,10 +146,17 @@ struct ContentView: View {
                 }
             }
 
-            if !upcoming.isEmpty {
+            if !upcoming.isEmpty || !birthdayTexts.isEmpty {
                 Section("Scheduled") {
                     ForEach(upcoming) { message in
                         row(message, now: now, route: .edit(message.id))
+                    }
+                    if let next = birthdayTexts.first {
+                        NavigationLink {
+                            BirthdayTextsView()
+                        } label: {
+                            BirthdaysRow(count: birthdayTexts.count, next: next, now: now)
+                        }
                     }
                 }
             }
@@ -121,7 +165,7 @@ struct ContentView: View {
         .scrollContentBackground(.hidden)
         .background(Color(.systemGroupedBackground))
         .overlay {
-            if !store.queue.isEmpty && due.isEmpty && upcoming.isEmpty {
+            if !store.queue.isEmpty && due.isEmpty && upcoming.isEmpty && birthdayTexts.isEmpty && prompt == nil {
                 ContentUnavailableView.search(text: searchText)
             } else if store.queue.isEmpty && notificationsAllowed {
                 ContentUnavailableView {
@@ -166,6 +210,10 @@ struct ContentView: View {
         switch route {
         case .new:
             MessageEditorView(existing: nil)
+        case .draft(let template):
+            MessageEditorView(existing: nil, template: template)
+        case .settings:
+            SettingsView()
         case .edit(let id):
             if let message = store.message(id: id) {
                 MessageEditorView(existing: message)
@@ -353,5 +401,87 @@ struct MissingMessageView: View {
                 }
             }
         }
+    }
+}
+
+/// The Birthdays row at the end of Scheduled: every birthday text in one.
+private struct BirthdaysRow: View {
+    let count: Int
+    let next: ScheduledMessage
+    let now: Date
+
+    var body: some View {
+        HStack(spacing: 12) {
+            Image(systemName: "birthday.cake")
+                .font(.title3)
+                .foregroundStyle(.pink)
+            VStack(alignment: .leading, spacing: 2) {
+                Text("Birthdays").font(.headline)
+                Text("\(count) \(count == 1 ? "person" : "people") · \(next.displayRecipient) next, \(next.sendAt.formatted(.dateTime.month(.abbreviated).day()))")
+                    .font(.subheadline)
+                    .foregroundStyle(.secondary)
+                    .lineLimit(1)
+            }
+        }
+        .padding(.vertical, 2)
+    }
+}
+
+/// Shown on the list while Birthday Texts is off, for the soonest birthday
+/// in the next week that has no text. Never a notification.
+private struct BirthdayPromptCard: View {
+    let contact: BirthdayContact
+    let day: Date
+    let schedule: () -> Void
+    let turnOnForEveryone: () -> Void
+    let dismiss: () -> Void
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            HStack(alignment: .top, spacing: 8) {
+                Image(systemName: "birthday.cake").foregroundStyle(.pink)
+                VStack(alignment: .leading, spacing: 2) {
+                    Text("\(contact.name)'s birthday is \(dayText)")
+                        .font(.subheadline.weight(.semibold))
+                    Text("Want a reminder to send a text?")
+                        .font(.subheadline)
+                        .foregroundStyle(.secondary)
+                }
+                Spacer(minLength: 0)
+                Button(action: dismiss) {
+                    Image(systemName: "xmark")
+                        .font(.footnote.weight(.semibold))
+                        .foregroundStyle(.tertiary)
+                }
+                .buttonStyle(.plain)
+                .accessibilityLabel("Not Now")
+            }
+            HStack(spacing: 8) {
+                Button(action: schedule) {
+                    Text("Schedule for \(firstName)").frame(maxWidth: .infinity)
+                }
+                .buttonStyle(.borderedProminent)
+                Button(action: turnOnForEveryone) {
+                    Text("Turn On for Everyone").frame(maxWidth: .infinity)
+                }
+                .buttonStyle(.bordered)
+            }
+            .font(.subheadline.weight(.semibold))
+            .lineLimit(1)
+            .minimumScaleFactor(0.8)
+        }
+        .padding(.vertical, 4)
+    }
+
+    private var firstName: String {
+        contact.name.split(separator: " ").first.map(String.init) ?? contact.name
+    }
+
+    /// "today", "tomorrow", or "Thu, Dec 3".
+    private var dayText: String {
+        let calendar = Calendar.current
+        if calendar.isDateInToday(day) { return "today" }
+        if calendar.isDateInTomorrow(day) { return "tomorrow" }
+        return day.formatted(.dateTime.weekday(.abbreviated).month(.abbreviated).day())
     }
 }

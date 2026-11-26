@@ -16,6 +16,8 @@ struct ScheduledTextsApp: App {
             // the badge, cleared notifications, and the 64-notification cap.
             if phase == .active {
                 MessageStore.shared.resync()
+                // New birthdays in Contacts, and the year rolling over.
+                BirthdayStore.shared.refresh()
             }
         }
     }

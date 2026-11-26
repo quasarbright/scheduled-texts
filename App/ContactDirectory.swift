@@ -30,30 +30,42 @@ final class ContactDirectory: ObservableObject {
     /// often: it reloads at most once per call to `refresh()`.
     func load() {
         guard loadTask == nil else { return }
-        loadTask = Task {
-            let status = CNContactStore.authorizationStatus(for: .contacts)
-            let allowed: Bool
-            switch status {
-            case .notDetermined:
-                allowed = (try? await store.requestAccess(for: .contacts)) ?? false
-            case .denied, .restricted:
-                allowed = false
-            default:
-                // .authorized, and .limited on iOS 18.
-                allowed = true
-            }
-            guard allowed else {
-                access = .denied
-                return
-            }
-            access = .granted
-            let store = store
-            let loaded = await Task.detached(priority: .userInitiated) {
-                Self.fetchAll(from: store)
-            }.value
-            contacts = loaded.cards
-            thumbnails = loaded.thumbnails
+        loadTask = Task { await loadContacts(askIfNeeded: true) }
+    }
+
+    /// Loads contacts only if access was already given, without asking.
+    /// For birthdays, which shouldn't pop up a permission prompt on launch.
+    func loadIfAllowed() {
+        guard loadTask == nil else { return }
+        switch CNContactStore.authorizationStatus(for: .contacts) {
+        case .notDetermined, .denied, .restricted: return
+        default: loadTask = Task { await loadContacts(askIfNeeded: false) }
         }
+    }
+
+    private func loadContacts(askIfNeeded: Bool) async {
+        let status = CNContactStore.authorizationStatus(for: .contacts)
+        let allowed: Bool
+        switch status {
+        case .notDetermined:
+            allowed = askIfNeeded ? ((try? await store.requestAccess(for: .contacts)) ?? false) : false
+        case .denied, .restricted:
+            allowed = false
+        default:
+            // .authorized, and .limited on iOS 18.
+            allowed = true
+        }
+        guard allowed else {
+            if status != .notDetermined || askIfNeeded { access = .denied }
+            return
+        }
+        access = .granted
+        let store = store
+        let loaded = await Task.detached(priority: .userInitiated) {
+            Self.fetchAll(from: store)
+        }.value
+        contacts = loaded.cards
+        thumbnails = loaded.thumbnails
     }
 
     /// Reloads on the next `load()`, to pick up contacts added since.
@@ -77,6 +89,7 @@ final class ContactDirectory: ObservableObject {
         CNContactEmailAddressesKey as CNKeyDescriptor,
         CNContactImageDataAvailableKey as CNKeyDescriptor,
         CNContactThumbnailImageDataKey as CNKeyDescriptor,
+        CNContactBirthdayKey as CNKeyDescriptor,
     ]
 
     nonisolated static func fetchAll(
@@ -125,7 +138,8 @@ final class ContactDirectory: ObservableObject {
             id: contact.identifier,
             name: name,
             otherNames: [nickname, company].filter { !$0.isEmpty },
-            addresses: addresses
+            addresses: addresses,
+            birthday: contact.isKeyAvailable(CNContactBirthdayKey) ? contact.birthday : nil
         )
     }
 

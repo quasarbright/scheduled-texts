@@ -58,6 +58,15 @@ final class MessageStore: ObservableObject {
         resync()
     }
 
+    /// Replaces the whole list, for Birthday Texts. Only saves when
+    /// something changed.
+    func replaceQueue(_ newQueue: MessageQueue) {
+        guard newQueue != queue else { return }
+        queue = newQueue
+        persist()
+        resync()
+    }
+
     /// The last change the person can undo, and what it said it did.
     struct UndoableChange: Equatable {
         let id = UUID()
@@ -73,6 +82,9 @@ final class MessageStore: ObservableObject {
     /// notification action), so no Undo shows up later.
     func delete(id: UUID, undoable: Bool = true) {
         guard let removed = queue.remove(id: id) else { return }
+        if let contactID = removed.birthdayContactID {
+            BirthdayStore.shared.stopped(contactID: contactID)
+        }
         lastChange = undoable
             ? UndoableChange(
                 summary: removed.repetition == nil
@@ -104,6 +116,11 @@ final class MessageStore: ObservableObject {
         guard let change = lastChange else { return }
         lastChange = nil
         save(change.previous)
+        // After putting the text back, so turning them on again doesn't
+        // make a second one.
+        if let contactID = change.previous.birthdayContactID {
+            BirthdayStore.shared.restarted(contactID: contactID)
+        }
     }
 
     func dismissUndo() {

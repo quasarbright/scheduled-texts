@@ -26,23 +26,26 @@ struct MessageEditorView: View {
 
     private let id: UUID
 
-    init(existing: ScheduledMessage?) {
+    /// Fills in a new text, as "Schedule for Kate" does. Still a new text:
+    /// Cancel throws it away.
+    init(existing: ScheduledMessage?, template: ScheduledMessage? = nil) {
         self.existing = existing
-        id = existing?.id ?? UUID()
-        if let existing, let name = existing.recipientName {
+        let source = existing ?? template
+        id = source?.id ?? UUID()
+        if let source, let name = source.recipientName {
             _recipient = State(initialValue: ChosenRecipient(
                 name: name,
-                address: existing.recipientAddress,
-                contactID: existing.contactIdentifier
+                address: source.recipientAddress,
+                contactID: source.contactIdentifier
             ))
             _query = State(initialValue: "")
         } else {
             _recipient = State(initialValue: nil)
-            _query = State(initialValue: existing?.recipientAddress ?? "")
+            _query = State(initialValue: source?.recipientAddress ?? "")
         }
-        _text = State(initialValue: existing?.body ?? "")
-        _sendAt = State(initialValue: existing?.sendAt ?? Self.defaultSendTime())
-        _repetition = State(initialValue: existing?.repetition)
+        _text = State(initialValue: source?.body ?? "")
+        _sendAt = State(initialValue: source?.sendAt ?? Self.defaultSendTime())
+        _repetition = State(initialValue: source?.repetition)
     }
 
     /// An hour from now, on the minute.
@@ -65,13 +68,39 @@ struct MessageEditorView: View {
             sendAt: sendAt,
             repetition: repetition,
             seriesAnchor: keepsSchedule ? existing?.seriesAnchor : nil,
-            occurrence: keepsSchedule ? existing?.occurrence : nil
+            occurrence: keepsSchedule ? existing?.occurrence : nil,
+            // A birthday text stays one while only its message changes.
+            // Moving it or changing the repeat makes it a text of your own.
+            birthdayContactID: keepsSchedule ? existing?.birthdayContactID : nil
         )
     }
+
+    @ObservedObject private var birthdays = BirthdayStore.shared
 
     var body: some View {
         NavigationStack {
             Form {
+                if let contactID = existing?.birthdayContactID {
+                    Section {
+                        Label {
+                            Text("Birthday text. Changes here are just for \(firstName).")
+                        } icon: {
+                            Image(systemName: "birthday.cake").foregroundStyle(.pink)
+                        }
+                        .font(.subheadline)
+                        if text.trimmingCharacters(in: .whitespacesAndNewlines) != birthdays.settings.message {
+                            Button("Use Default Message") {
+                                text = birthdays.settings.message
+                            }
+                        }
+                    } footer: {
+                        if draft.birthdayContactID == nil {
+                            Text("Changing the time or repeat makes this your own text, and \(firstName) won't get the birthday text from Settings.")
+                        }
+                    }
+                    .id(contactID)
+                }
+
                 Section {
                     RecipientField(
                         recipient: $recipient,
@@ -184,7 +213,7 @@ struct MessageEditorView: View {
                 }
                 ToolbarItem(placement: .confirmationAction) {
                     Button("Save") {
-                        store.save(draft)
+                        saveDraft()
                         router.closeEditor(stillDue: draft.isDue(at: Date()))
                     }
                     .disabled(!draft.isValid)
@@ -203,9 +232,28 @@ struct MessageEditorView: View {
     /// button and the swipe action.
     private func sendNow() {
         if hasChanges {
-            store.save(draft)
+            saveDraft()
         }
         router.open(.send(id))
+    }
+
+    /// Saves, and keeps Birthday Texts in step: a new message becomes this
+    /// person's own; a moved birthday text stops being one.
+    private func saveDraft() {
+        let message = draft
+        store.save(message)
+        if let contactID = existing?.birthdayContactID {
+            if message.birthdayContactID == nil {
+                birthdays.stopped(contactID: contactID)
+            } else {
+                birthdays.edited(message)
+            }
+        }
+    }
+
+    private var firstName: String {
+        let name = existing?.displayRecipient ?? ""
+        return name.split(separator: " ").first.map(String.init) ?? name
     }
 
     /// Leaves without saving: back to "Send this text?" if that's where the
