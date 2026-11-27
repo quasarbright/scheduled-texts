@@ -49,7 +49,11 @@ final class BirthdayStore: ObservableObject {
 
     private func contactsChanged(_ cards: [ContactCard]) {
         let now = Date()
-        contacts = cards.compactMap(BirthdayContact.init(card:)).sorted {
+        // Keep the card that already has a birthday text or its own message,
+        // so deduping never moves someone's text to a different card.
+        let preferred = Set(MessageStore.shared.queue.messages.compactMap(\.birthdayContactID))
+            .union(settings.customMessages.keys)
+        contacts = BirthdayContact.deduplicated(cards, preferring: preferred).sorted {
             ($0.nextBirthdayDay(from: now) ?? .distantFuture, $0.name) < ($1.nextBirthdayDay(from: now) ?? .distantFuture, $1.name)
         }
         sync()

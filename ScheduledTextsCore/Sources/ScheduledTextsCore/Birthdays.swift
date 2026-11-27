@@ -231,3 +231,53 @@ public enum BirthdayPlanner {
         )
     }
 }
+
+extension BirthdayContact {
+    /// One birthday per person from the person's contact cards. The same
+    /// person often has more than one card that Contacts didn't link (one
+    /// from iCloud and one from Gmail, say), and each would get its own
+    /// birthday text. Two cards are the same person when they share a
+    /// birthday and either a name or a phone number or email.
+    ///
+    /// Of each group, it keeps the card in `preferred` (one that already has
+    /// a birthday text or its own message), else the one with the most
+    /// numbers and emails, else the first.
+    public static func deduplicated(_ cards: [ContactCard], preferring preferred: Set<String> = []) -> [BirthdayContact] {
+        struct Candidate { var card: ContactCard; var contact: BirthdayContact; var keys: Set<String> }
+        let candidates: [Candidate] = cards.compactMap { card in
+            guard let contact = BirthdayContact(card: card) else { return nil }
+            let name = card.name.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
+            var keys = Set(card.addresses.map { "a:" + ContactSearch.addressKey($0.value) }.filter { $0.count > 2 })
+            if !name.isEmpty { keys.insert("n:" + name) }
+            return Candidate(card: card, contact: contact, keys: keys)
+        }
+
+        // Union-find over cards that share a birthday and a key.
+        var parent = Array(candidates.indices)
+        func root(_ i: Int) -> Int {
+            var i = i
+            while parent[i] != i { parent[i] = parent[parent[i]]; i = parent[i] }
+            return i
+        }
+        var owner: [String: Int] = [:]
+        for (i, c) in candidates.enumerated() {
+            for key in c.keys {
+                let k = "\(c.contact.month)/\(c.contact.day)|\(key)"
+                if let j = owner[k] { parent[root(i)] = root(j) } else { owner[k] = i }
+            }
+        }
+
+        var best: [Int: Int] = [:]
+        func better(_ a: Candidate, than b: Candidate) -> Bool {
+            let ap = preferred.contains(a.card.id), bp = preferred.contains(b.card.id)
+            if ap != bp { return ap }
+            return a.card.addresses.count > b.card.addresses.count
+        }
+        for i in candidates.indices {
+            let r = root(i)
+            if let b = best[r], !better(candidates[i], than: candidates[b]) { continue }
+            best[r] = i
+        }
+        return best.values.sorted().map { candidates[$0].contact }
+    }
+}
