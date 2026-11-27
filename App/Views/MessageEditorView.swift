@@ -7,6 +7,9 @@ struct MessageEditorView: View {
     /// What a filled-in new text started as, so Cancel only asks once
     /// something was changed.
     let template: ScheduledMessage?
+    /// Closes the editor when it's shown by a screen of its own (Birthdays)
+    /// instead of as the list's sheet. Nil uses the list's sheet.
+    var onClose: (() -> Void)? = nil
 
     @EnvironmentObject private var store: MessageStore
     @EnvironmentObject private var router: Router
@@ -31,8 +34,9 @@ struct MessageEditorView: View {
 
     /// Fills in a new text, as "Schedule for Kate" does. Still a new text:
     /// Cancel throws it away.
-    init(existing: ScheduledMessage?, template: ScheduledMessage? = nil) {
+    init(existing: ScheduledMessage?, template: ScheduledMessage? = nil, onClose: (() -> Void)? = nil) {
         self.existing = existing
+        self.onClose = onClose
         self.template = template
         let source = existing ?? template
         id = source?.id ?? UUID()
@@ -166,7 +170,7 @@ struct MessageEditorView: View {
 
                         Button(role: .destructive) {
                             if store.dontSendIfOneOff(existing) {
-                                router.close()
+                                close()
                             } else {
                                 askingDontSend = existing
                             }
@@ -179,7 +183,7 @@ struct MessageEditorView: View {
                 }
             }
             .dontSendDialog(asking: $askingDontSend, store: store) {
-                router.close()
+                close()
             }
             .onAppear {
                 directory.refresh()
@@ -218,7 +222,11 @@ struct MessageEditorView: View {
                 ToolbarItem(placement: .confirmationAction) {
                     Button("Save") {
                         saveDraft()
-                        router.closeEditor(stillDue: draft.isDue(at: Date()))
+                        if let onClose {
+                            onClose()
+                        } else {
+                            router.closeEditor(stillDue: draft.isDue(at: Date()))
+                        }
                     }
                     .disabled(!draft.isValid)
                 }
@@ -238,6 +246,7 @@ struct MessageEditorView: View {
         if hasChanges {
             saveDraft()
         }
+        onClose?()
         router.open(.send(id))
     }
 
@@ -263,7 +272,16 @@ struct MessageEditorView: View {
     /// Leaves without saving: back to "Send this text?" if that's where the
     /// editor was opened from, otherwise to the list.
     private func closeEditor() {
-        router.closeEditor(stillDue: existing?.isDue(at: Date()) ?? false)
+        if let onClose {
+            onClose()
+        } else {
+            router.closeEditor(stillDue: existing?.isDue(at: Date()) ?? false)
+        }
+    }
+
+    /// Closes after the text is deleted.
+    private func close() {
+        if let onClose { onClose() } else { router.close() }
     }
 
     private var hasChanges: Bool {

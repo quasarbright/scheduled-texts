@@ -156,7 +156,7 @@ struct ContentView: View {
                     }
                     if let next = birthdayTexts.first {
                         NavigationLink {
-                            BirthdayTextsView()
+                            BirthdaysView()
                         } label: {
                             BirthdaysRow(count: birthdayTexts.count, next: next, now: now)
                         }
