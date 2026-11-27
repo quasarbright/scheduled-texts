@@ -130,6 +130,29 @@ final class BirthdayTests: XCTestCase {
         XCTAssertNil(q.messages[0].birthdayContactID)
     }
 
+    /// Don't Send > Skip This One moves the text to next year's birthday.
+    /// The next sync must leave it there, not pull it back to this year.
+    func testSkippedYearIsNotUndone() {
+        var s = on()
+        var q = BirthdayPlanner.reconcile(queue: MessageQueue(), contacts: [kate], settings: &s, now: now, calendar: calendar)
+        let skipped = q.messages[0].nextInSeries(now: now, calendar: calendar)!
+        XCTAssertEqual(skipped.sendAt, date(2027, 12, 3, 9))
+        q.upsert(skipped)
+        q = BirthdayPlanner.reconcile(queue: q, contacts: [kate], settings: &s, now: now, calendar: calendar)
+        XCTAssertEqual(q.messages[0].sendAt, date(2027, 12, 3, 9))
+        XCTAssertEqual(q.messages[0].birthdayContactID, "kate")
+    }
+
+    /// A changed time still moves a skipped text, keeping its year.
+    func testSkippedYearFollowsANewTime() {
+        var s = on()
+        var q = BirthdayPlanner.reconcile(queue: MessageQueue(), contacts: [kate], settings: &s, now: now, calendar: calendar)
+        q.upsert(q.messages[0].nextInSeries(now: now, calendar: calendar)!)
+        s.hour = 10
+        q = BirthdayPlanner.reconcile(queue: q, contacts: [kate], settings: &s, now: now, calendar: calendar)
+        XCTAssertEqual(q.messages[0].sendAt, date(2027, 12, 3, 10))
+    }
+
     func testRemindLaterIsNotUndone() {
         var s = on()
         var q = BirthdayPlanner.reconcile(queue: MessageQueue(), contacts: [kate], settings: &s, now: now, calendar: calendar)

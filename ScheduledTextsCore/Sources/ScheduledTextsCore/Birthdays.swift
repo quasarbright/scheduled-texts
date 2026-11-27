@@ -95,6 +95,26 @@ public enum BirthdayPlanner {
     ///
     /// A text that's ready to send is left alone apart from its message, so
     /// changing a setting never makes one disappear before it's sent.
+    /// Where a birthday text belongs: the next birthday at the set time, or
+    /// the one a year after that when this year's was skipped (Don't Send >
+    /// Skip This One). Only one year on: a yearly repeat from Feb 29 jumps
+    /// four years, and that should still come back to the next birthday.
+    static func birthdayTime(
+        for message: ScheduledMessage,
+        contact: BirthdayContact,
+        settings: BirthdaySettings,
+        now: Date,
+        calendar: Calendar
+    ) -> Date? {
+        guard let next = contact.nextBirthday(after: now, hour: settings.hour, minute: settings.minute, calendar: calendar) else { return nil }
+        let year = calendar.component(.year, from: message.sendAt)
+        guard year == calendar.component(.year, from: next) + 1,
+              let day = contact.birthday(in: year, calendar: calendar),
+              let later = calendar.date(bySettingHour: settings.hour, minute: settings.minute, second: 0, of: day)
+        else { return next }
+        return later
+    }
+
     public static func reconcile(
         queue: MessageQueue,
         contacts: [BirthdayContact],
@@ -141,7 +161,7 @@ public enum BirthdayPlanner {
                 // ready, or moved by Remind Me Later. This also moves a
                 // Feb 29 birthday between Feb 28 and Feb 29 each year.
                 if !existing.isDue(at: now) && existing.occurrence == nil,
-                   let next = contact.nextBirthday(after: now, hour: settings.hour, minute: settings.minute, calendar: calendar),
+                   let next = Self.birthdayTime(for: existing, contact: contact, settings: settings, now: now, calendar: calendar),
                    next != existing.sendAt {
                     existing.sendAt = next
                     existing.seriesAnchor = next

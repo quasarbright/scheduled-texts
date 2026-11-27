@@ -6,116 +6,169 @@ import XCTest
 /// access granted before launch:
 /// `xcrun simctl addmedia <udid> birthdays.vcf`
 /// `xcrun simctl privacy <udid> grant contacts com.quasarbright.ScheduledTexts`
-/// Pass the soonest birthday's first name in BIRTHDAY_FIRST (default "Ava").
+/// Pass the soonest birthday's name in BIRTHDAY_NAME (default "Ava Chen");
+/// with xcodebuild, set TEST_RUNNER_BIRTHDAY_NAME.
 final class BirthdayDemoTests: XCTestCase {
+    private var app: XCUIApplication!
+    private var person = "Ava Chen"
+    private var first: String { String(person.split(separator: " ").first ?? "") }
+
     func testBirthdayTexts() throws {
-        let first = ProcessInfo.processInfo.environment["BIRTHDAY_FIRST"] ?? "Ava"
-        let app = XCUIApplication()
+        person = ProcessInfo.processInfo.environment["BIRTHDAY_NAME"] ?? person
+        app = XCUIApplication()
         app.launch()
         dismissAlerts()
 
-        // a. The prompt card, with Birthday Texts off.
+        // The prompt card, with Birthday Texts off.
         let schedule = app.buttons["Schedule for \(first)"]
         if !schedule.waitForExistence(timeout: 10) { print("TREE:\n\(app.debugDescription)") }
         XCTAssertTrue(schedule.exists)
         sleep(1)
         shot("01-prompt-card")
 
-        // g. "Schedule for X" opens New Text, filled in.
+        // "Schedule for X" opens New Text, filled in. Cancel on an
+        // untouched one closes without asking.
         schedule.tap()
         XCTAssertTrue(app.buttons["Cancel"].waitForExistence(timeout: 5))
         sleep(1)
         shot("02-schedule-for-draft")
-        app.swipeUp()
-        sleep(1)
-        shot("03-schedule-for-draft-when")
         app.buttons["Cancel"].tap()
-        let discard = app.buttons["Discard"]
-        if discard.waitForExistence(timeout: 2) {
-            shot("03b-schedule-for-cancel-asks")
-            discard.tap()
-        }
+        XCTAssertFalse(app.buttons["Discard"].waitForExistence(timeout: 2), "Cancel asked to discard an untouched draft")
         sleep(1)
 
-        // b. Turn On for Everyone: Settings opens and the switch flips on.
+        // Turn On for Everyone lands on Birthdays and flips the switch.
         app.buttons["Turn On for Everyone"].tap()
-        XCTAssertTrue(app.navigationBars["Settings"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.navigationBars["Birthdays"].waitForExistence(timeout: 5))
         sleep(2)
         dismissAlerts()
-        shot("04-settings-on")
-
-        // c. People: Disable All, Enable All (on the first section header).
-        let people = app.buttons.matching(NSPredicate(format: "label BEGINSWITH 'People'")).firstMatch
-        if !people.waitForExistence(timeout: 5) { print("TREE:\n\(app.debugDescription)") }
-        people.tap()
-        XCTAssertTrue(app.navigationBars["Birthdays"].waitForExistence(timeout: 5))
-        sleep(1)
-        shot("05-people")
+        XCTAssertEqual(birthdaySwitch.value as? String, "1", "The switch didn't flip on")
+        shot("03-birthdays-on")
         app.swipeUp()
         sleep(1)
-        shot("05b-people-end")
+        shot("04-birthdays-on-scrolled")
         app.swipeDown()
+        sleep(1)
+
+        // The checkmark turns one person off and on.
+        let check = app.buttons.matching(NSPredicate(format: "label == %@", person)).firstMatch
+        XCTAssertTrue(check.exists)
+        check.tap()
+        sleep(1)
+        XCTAssertTrue(personRow.label.contains("No text"), "Checkmark didn't turn \(first) off: \(personRow.label)")
+        shot("05-birthdays-one-off")
+        check.tap()
+        sleep(1)
+        XCTAssertFalse(personRow.label.contains("No text"))
+
+        // Disable All / Enable All.
         app.buttons["Disable All"].tap()
         sleep(1)
-        shot("06-people-select-none")
+        shot("06-birthdays-disable-all")
         app.buttons["Enable All"].tap()
         sleep(1)
-        shot("07-people-select-all")
-        app.navigationBars["Birthdays"].buttons.firstMatch.tap()
-        sleep(1)
-        shot("08-settings-after-people")
-        app.navigationBars["Settings"].buttons["Done"].tap()
-        sleep(1)
 
-        // d. One Birthdays row under Scheduled, and the Birthdays list.
-        shot("09-list-birthdays-row")
-        let row = app.buttons.matching(NSPredicate(format: "label BEGINSWITH 'Birthdays'")).firstMatch
-        if !row.waitForExistence(timeout: 5) { print("TREE:\n\(app.debugDescription)") }
-        row.tap()
-        XCTAssertTrue(app.navigationBars["Birthdays"].waitForExistence(timeout: 5))
-        sleep(1)
-        shot("10-birthdays-list")
-        app.swipeUp()
-        sleep(1)
-        shot("10b-birthdays-list-end")
-        app.swipeDown()
-        sleep(1)
+        // Tapping the row opens that person's text; Cancel, Save and
+        // Don't Send each close only the editor.
+        openEditor()
+        shot("07-editor-from-row")
+        app.buttons["Cancel"].tap()
+        assertBackOnBirthdays("Cancel")
 
-        // e. Edit one person's birthday text.
-        app.buttons.matching(NSPredicate(format: "label BEGINSWITH %@", first)).firstMatch.tap()
-        XCTAssertTrue(app.buttons["Save"].waitForExistence(timeout: 5))
-        sleep(1)
-        shot("11-birthday-editor")
+        openEditor()
+        // The Birthdays screen behind the sheet has a "Happy birthday!"
+        // field too; the editor's is the lower one.
         let body = app.descendants(matching: .any)
-            .matching(NSPredicate(format: "value BEGINSWITH 'Happy birthday'")).firstMatch
-        // Tap at the end of the text so the deletes clear it.
+            .matching(NSPredicate(format: "value BEGINSWITH 'Happy birthday'"))
+            .allElementsBoundByIndex.max { $0.frame.minY < $1.frame.minY }!
         body.coordinate(withNormalizedOffset: CGVector(dx: 0.98, dy: 0.5)).tap()
         app.typeText(String(repeating: XCUIKeyboardKey.delete.rawValue, count: 40))
         app.typeText("Happy birthday \(first)! Dinner soon?")
-        sleep(1)
-        shot("12-birthday-editor-changed")
         app.buttons["Save"].tap()
-        sleep(1)
-        shot("13-birthdays-list-custom")
-        app.navigationBars["Birthdays"].buttons.firstMatch.tap()
-        sleep(1)
+        assertBackOnBirthdays("Save")
+        XCTAssertTrue(personRow.label.contains("Dinner soon"), "Custom message not shown: \(personRow.label)")
+        shot("08-birthdays-custom-message")
 
+        openEditor()
+        app.swipeUp()
+        sleep(1)
+        app.buttons["Don't Send"].firstMatch.tap()
+        let skip = app.buttons["Skip This One"].firstMatch
+        if skip.waitForExistence(timeout: 3) {
+            shot("09-editor-dont-send-asks")
+            skip.tap()
+        }
+        assertBackOnBirthdays("Don't Send")
+        shot("09b-after-skip")
+        // Skipping one year keeps them a birthday text.
+        XCTAssertFalse(personRow.label.contains("No text"), "Skip This One turned \(first)'s birthday text off: \(personRow.label)")
+
+        // Send Now: the editor and Settings close, and the compose screen
+        // opens (the simulator can't send, so it says so).
+        openEditor()
+        app.swipeUp()
+        sleep(1)
+        app.buttons["Send Now"].firstMatch.tap()
+        sleep(2)
+        shot("10-editor-send-now")
+        let cantSend = app.alerts["This iPhone can't send texts"]
+        XCTAssertTrue(cantSend.waitForExistence(timeout: 5), "No compose screen or can't-send alert after Send Now")
+        cantSend.buttons["OK"].tap()
+        sleep(1)
+        shot("11-after-send-now")
+
+        // Settings shows one Birthdays row.
         app.buttons["Settings"].firstMatch.tap()
         XCTAssertTrue(app.navigationBars["Settings"].waitForExistence(timeout: 5))
-        app.buttons.matching(NSPredicate(format: "label BEGINSWITH 'People'")).firstMatch.tap()
         sleep(1)
-        shot("14-people-custom")
-        app.navigationBars["Birthdays"].buttons.firstMatch.tap()
+        shot("12-settings")
+        app.navigationBars["Settings"].buttons["Done"].tap()
         sleep(1)
 
-        // f. Turn it off: the birthday texts go.
-        let toggle = app.switches.firstMatch
-        toggle.coordinate(withNormalizedOffset: CGVector(dx: 0.93, dy: 0.5)).tap()
+        // The list's Birthdays row opens the same screen.
+        shot("13-list-birthdays-row")
+        let listRow = app.buttons.matching(NSPredicate(format: "label BEGINSWITH 'Birthdays'")).firstMatch
+        XCTAssertTrue(listRow.waitForExistence(timeout: 5))
+        listRow.tap()
+        XCTAssertTrue(app.navigationBars["Birthdays"].waitForExistence(timeout: 5))
+        XCTAssertTrue(birthdaySwitch.exists, "List's Birthdays row didn't open the Birthdays screen")
         sleep(1)
-        shot("15-settings-off")
-        app.navigationBars["Settings"].buttons["Done"].tap()
+        shot("14-birthdays-from-list")
+        openEditor()
+        app.buttons["Cancel"].tap()
+        assertBackOnBirthdays("Cancel from the list's Birthdays")
+
+        // Turn it off.
+        birthdaySwitch.coordinate(withNormalizedOffset: CGVector(dx: 0.93, dy: 0.5)).tap()
+        sleep(1)
+        XCTAssertEqual(birthdaySwitch.value as? String, "0")
+        shot("15-birthdays-off")
+        app.navigationBars["Birthdays"].buttons.firstMatch.tap()
         sleep(2)
         shot("16-list-after-off")
+    }
+
+    private var birthdaySwitch: XCUIElement {
+        app.switches.matching(NSPredicate(format: "label CONTAINS 'Birthday Texts'")).firstMatch
+    }
+
+    /// The row's main button (not the checkmark, whose label is just the name).
+    private var personRow: XCUIElement {
+        app.buttons.matching(NSPredicate(format: "label BEGINSWITH %@ AND label != %@", person, person)).firstMatch
+    }
+
+    private func openEditor() {
+        let row = personRow
+        if !row.waitForExistence(timeout: 5) { print("TREE:\n\(app.debugDescription)") }
+        row.tap()
+        XCTAssertTrue(app.buttons["Save"].waitForExistence(timeout: 5), "Row didn't open the editor")
+        sleep(1)
+    }
+
+    private func assertBackOnBirthdays(_ action: String, line: UInt = #line) {
+        sleep(1)
+        XCTAssertFalse(app.buttons["Save"].exists, "\(action) didn't close the editor", line: line)
+        XCTAssertTrue(app.navigationBars["Birthdays"].exists, "\(action) closed more than the editor", line: line)
+        XCTAssertTrue(birthdaySwitch.exists, "\(action) left the Birthdays screen", line: line)
     }
 
     private func dismissAlerts() {

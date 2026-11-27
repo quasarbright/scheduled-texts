@@ -131,6 +131,9 @@ struct BirthdaysView: View {
             }
         }
         .navigationTitle("Birthdays")
+        // Inline, like a Settings page. A large title pushed inside the
+        // Settings sheet drew over the Birthday Texts switch.
+        .navigationBarTitleDisplayMode(.inline)
         .toolbar {
             ToolbarItemGroup(placement: .keyboard) {
                 Spacer()
