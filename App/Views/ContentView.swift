@@ -187,13 +187,17 @@ struct ContentView: View {
         }
         .buttonStyle(.plain)
         .swipeActions(edge: .trailing) {
-            Button(role: .destructive) {
+            // Not role: .destructive. A destructive swipe button makes the
+            // list drop the row right away, before "This text repeats" is
+            // answered, and deleting it again afterwards crashed the list.
+            Button {
                 if !store.dontSendIfOneOff(message) {
                     askingDontSend = message
                 }
             } label: {
                 Label("Don't Send", systemImage: "xmark")
             }
+            .tint(.red)
         }
         .swipeActions(edge: .leading) {
             Button {
