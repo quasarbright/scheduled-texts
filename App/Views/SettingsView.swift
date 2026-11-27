@@ -117,14 +117,14 @@ struct BirthdaysView: View {
             // next to the list it acts on.
             if !comingUp.isEmpty {
                 Section {
-                    ForEach(comingUp) { row($0, now: now, soon: true) }
+                    ForEach(comingUp) { row($0, now: now) }
                 } header: {
                     header("Coming Up", allIncluded: allIncluded, showsButton: true)
                 }
             }
             if !later.isEmpty {
                 Section {
-                    ForEach(later) { row($0, now: now, soon: false) }
+                    ForEach(later) { row($0, now: now) }
                 } header: {
                     header("Later", allIncluded: allIncluded, showsButton: comingUp.isEmpty)
                 }
@@ -170,7 +170,7 @@ struct BirthdaysView: View {
         if birthdays.contacts.isEmpty {
             return "Add birthdays to people in Contacts and they'll show up here."
         }
-        return "Each person gets a yearly text with this message. To change one person's text, tap them."
+        return "Each person gets a yearly text with this message. To change one person's text, tap their name."
     }
 
     private var time: Binding<Date> {
@@ -209,24 +209,13 @@ struct BirthdaysView: View {
         }
     }
 
-    private func row(_ contact: BirthdayContact, now: Date, soon: Bool) -> some View {
+    private func row(_ contact: BirthdayContact, now: Date) -> some View {
         let included = birthdays.settings.isIncluded(contact.id)
         let custom = birthdays.settings.customMessages[contact.id]
         let text = included ? store.queue.messages.first { $0.birthdayContactID == contact.id } : nil
         return HStack(spacing: 12) {
-            Button {
-                withAnimation { birthdays.setIncluded(contact.id, !included) }
-            } label: {
-                Image(systemName: included ? "checkmark.circle.fill" : "circle")
-                    .font(.title2)
-                    .foregroundStyle(included ? Color.accentColor : Color(.tertiaryLabel))
-                    .frame(minWidth: 30, minHeight: 44)
-                    .contentShape(Rectangle())
-            }
-            .buttonStyle(.plain)
-            .accessibilityLabel(contact.name)
-            .accessibilityAddTraits(included ? .isSelected : [])
-
+            // Tapping the name opens their text. Without a text (switched
+            // off), it flips the switch instead.
             Button {
                 if let text {
                     editing = text
@@ -234,45 +223,42 @@ struct BirthdaysView: View {
                     withAnimation { birthdays.setIncluded(contact.id, !included) }
                 }
             } label: {
-                HStack {
-                    VStack(alignment: .leading, spacing: 2) {
-                        HStack(alignment: .firstTextBaseline) {
-                            Text(contact.name).font(.headline).lineLimit(1)
-                            Spacer()
-                            Text(birthdayLabel(contact, now: now, soon: soon))
-                                .font(.subheadline).foregroundStyle(.secondary)
-                        }
-                        Group {
-                            if !included {
-                                Text("No text")
-                            } else if let custom {
-                                Text(custom).foregroundStyle(.primary)
-                            } else {
-                                Text(birthdays.settings.message)
-                            }
-                        }
-                        .font(.subheadline)
-                        .foregroundStyle(.secondary)
-                        .lineLimit(1)
+                VStack(alignment: .leading, spacing: 2) {
+                    // The full name wins; the date gives way first.
+                    HStack(alignment: .firstTextBaseline, spacing: 4) {
+                        Text(contact.name).font(.headline).lineLimit(1).layoutPriority(1)
+                        Text("· " + birthdayLabel(contact, now: now))
+                            .font(.subheadline).foregroundStyle(.secondary).lineLimit(1)
                     }
-                    if text != nil {
-                        Image(systemName: "chevron.right")
-                            .font(.footnote.weight(.semibold))
-                            .foregroundStyle(Color(.tertiaryLabel))
+                    Group {
+                        if !included {
+                            Text("No text")
+                        } else if let custom {
+                            Text(custom).foregroundStyle(.primary)
+                        } else {
+                            Text(birthdays.settings.message)
+                        }
                     }
+                    .font(.subheadline)
+                    .foregroundStyle(.secondary)
+                    .lineLimit(1)
                 }
+                .frame(maxWidth: .infinity, alignment: .leading)
                 .contentShape(Rectangle())
             }
             .buttonStyle(.plain)
+
+            Toggle(contact.name, isOn: Binding(
+                get: { included },
+                set: { on in withAnimation { birthdays.setIncluded(contact.id, on) } }
+            ))
+            .labelsHidden()
         }
     }
 }
 
-/// "Thu, Dec 3" for a birthday this month, "Mar 22" further out.
-func birthdayLabel(_ contact: BirthdayContact, now: Date, soon: Bool) -> String {
+/// "Mar 22": the month and day of the next birthday.
+func birthdayLabel(_ contact: BirthdayContact, now: Date) -> String {
     guard let day = contact.nextBirthdayDay(from: now) else { return "" }
-    return soon
-        ? day.formatted(.dateTime.weekday(.abbreviated).month(.abbreviated).day())
-        : day.formatted(.dateTime.month(.abbreviated).day())
+    return day.formatted(.dateTime.month(.abbreviated).day())
 }
-
