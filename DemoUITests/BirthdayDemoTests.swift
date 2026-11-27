@@ -49,16 +49,26 @@ final class BirthdayDemoTests: XCTestCase {
         app.swipeDown()
         sleep(1)
 
-        // The checkmark turns one person off and on.
-        let check = app.buttons.matching(NSPredicate(format: "label == %@", person)).firstMatch
-        XCTAssertTrue(check.exists)
-        check.tap()
+        // The person's switch turns them off and on. Enable All shows
+        // while anyone is off, Disable All only when everyone is on.
+        XCTAssertTrue(app.buttons["Disable All"].exists)
+        let personSwitch = app.switches[person].firstMatch
+        XCTAssertTrue(personSwitch.exists, "No switch labeled \(person)")
+        XCTAssertEqual(personSwitch.value as? String, "1")
+        personSwitch.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.5)).tap()
         sleep(1)
-        XCTAssertTrue(personRow.label.contains("No text"), "Checkmark didn't turn \(first) off: \(personRow.label)")
+        XCTAssertEqual(personSwitch.value as? String, "0", "Switch didn't turn \(first) off")
+        XCTAssertTrue(personRow.label.contains("No text"), "\(first) still has a text: \(personRow.label)")
+        XCTAssertTrue(app.buttons["Enable All"].exists, "Enable All missing with one person off")
+        XCTAssertFalse(app.buttons["Disable All"].exists, "Disable All shown with one person off")
         shot("05-birthdays-one-off")
-        check.tap()
+        // Tapping the name of someone without a text turns them on.
+        personRow.tap()
         sleep(1)
+        XCTAssertEqual(personSwitch.value as? String, "1", "Tapping \(first)'s name didn't turn them on")
         XCTAssertFalse(personRow.label.contains("No text"))
+        XCTAssertTrue(app.buttons["Disable All"].exists)
+        XCTAssertTrue(app.buttons["Save"].waitForExistence(timeout: 1) == false, "Tapping a person without a text opened an editor")
 
         // Disable All / Enable All.
         app.buttons["Disable All"].tap()
