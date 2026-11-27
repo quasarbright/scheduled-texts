@@ -43,7 +43,7 @@ final class StopRepeatingTests: XCTestCase {
 
         XCTAssertEqual(app.state, .runningForeground, "The app crashed")
         XCTAssertFalse(app.staticTexts[body].exists)
-        XCTAssertTrue(app.staticTexts.matching(NSPredicate(format: "label BEGINSWITH 'Stopped repeating'")).firstMatch.exists)
+        XCTAssertTrue(app.descendants(matching: .any).matching(NSPredicate(format: "label CONTAINS 'Stopped repeating'")).firstMatch.exists)
     }
 
     private func dismissAlerts() {

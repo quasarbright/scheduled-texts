@@ -51,7 +51,10 @@ struct ContentView: View {
                     .id(change.id)
                     .transition(.move(edge: .bottom).combined(with: .opacity))
                     .task(id: change.id) {
-                        try? await Task.sleep(for: .seconds(8))
+                        // A cancelled task means the toast was rebuilt (the
+                        // bottom bar changes when the list empties), not that
+                        // its time ran out; the new one starts its own wait.
+                        guard (try? await Task.sleep(for: .seconds(8))) != nil else { return }
                         if store.lastChange?.id == change.id {
                             withAnimation { store.dismissUndo() }
                         }
