@@ -46,6 +46,30 @@ final class StopRepeatingTests: XCTestCase {
         XCTAssertTrue(app.descendants(matching: .any).matching(NSPredicate(format: "label CONTAINS 'Stopped repeating'")).firstMatch.exists)
     }
 
+    /// The case that crashed on Mike's phone: a repeating text that's
+    /// already due, in Ready to Send. Needs a seeded messages.json in the
+    /// app group with a daily text "Due stop test" whose time has passed;
+    /// skipped without it.
+    func testStopRepeatingDueFromSwipe() throws {
+        let app = XCUIApplication()
+        app.launch()
+        dismissAlerts()
+        let row = app.staticTexts["Due stop test"].firstMatch
+        guard row.waitForExistence(timeout: 5) else {
+            throw XCTSkip("No seeded due text")
+        }
+        XCTAssertTrue(app.staticTexts["Ready to Send"].exists)
+        row.swipeLeft()
+        app.buttons["Don't Send"].firstMatch.tap()
+        let stop = app.buttons["Stop Repeating"].firstMatch
+        XCTAssertTrue(stop.waitForExistence(timeout: 5))
+        stop.tap()
+        sleep(2)
+
+        XCTAssertEqual(app.state, .runningForeground, "The app crashed")
+        XCTAssertFalse(app.staticTexts["Due stop test"].exists)
+    }
+
     private func dismissAlerts() {
         let springboard = XCUIApplication(bundleIdentifier: "com.apple.springboard")
         for name in ["Allow", "Allow Full Access", "OK", "Continue"] {
