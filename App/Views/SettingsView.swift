@@ -142,14 +142,20 @@ struct PeopleView: View {
             } footer: {
                 Text("When you add a birthday in Contacts, they get a text too.")
             }
+            // Enable All / Disable All sits on the first section's header,
+            // next to the list it acts on.
             if !comingUp.isEmpty {
-                Section("Coming Up") {
+                Section {
                     ForEach(comingUp) { row($0, now: now, soon: true) }
+                } header: {
+                    header("Coming Up", allIncluded: allIncluded, showsButton: true)
                 }
             }
             if !later.isEmpty {
-                Section("Later") {
+                Section {
                     ForEach(later) { row($0, now: now, soon: false) }
+                } header: {
+                    header("Later", allIncluded: allIncluded, showsButton: comingUp.isEmpty)
                 }
             }
         }
@@ -163,12 +169,18 @@ struct PeopleView: View {
             }
         }
         .navigationTitle("Birthdays")
-        .toolbar {
-            ToolbarItem(placement: .topBarTrailing) {
-                Button(allIncluded ? "Select None" : "Select All") {
-                    birthdays.selectAll(!allIncluded)
+    }
+
+    private func header(_ title: String, allIncluded: Bool, showsButton: Bool) -> some View {
+        HStack(alignment: .firstTextBaseline) {
+            Text(title)
+            Spacer()
+            if showsButton {
+                Button(allIncluded ? "Disable All" : "Enable All") {
+                    withAnimation { birthdays.selectAll(!allIncluded) }
                 }
-                .disabled(birthdays.contacts.isEmpty)
+                .font(.subheadline)
+                .textCase(nil)
             }
         }
     }

@@ -44,7 +44,7 @@ final class BirthdayDemoTests: XCTestCase {
         dismissAlerts()
         shot("04-settings-on")
 
-        // c. People: Select None, Select All.
+        // c. People: Disable All, Enable All (on the first section header).
         let people = app.buttons.matching(NSPredicate(format: "label BEGINSWITH 'People'")).firstMatch
         if !people.waitForExistence(timeout: 5) { print("TREE:\n\(app.debugDescription)") }
         people.tap()
@@ -55,10 +55,10 @@ final class BirthdayDemoTests: XCTestCase {
         sleep(1)
         shot("05b-people-end")
         app.swipeDown()
-        app.navigationBars["Birthdays"].buttons["Select None"].tap()
+        app.buttons["Disable All"].tap()
         sleep(1)
         shot("06-people-select-none")
-        app.navigationBars["Birthdays"].buttons["Select All"].tap()
+        app.buttons["Enable All"].tap()
         sleep(1)
         shot("07-people-select-all")
         app.navigationBars["Birthdays"].buttons.firstMatch.tap()
